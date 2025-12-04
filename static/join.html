@@ -66,25 +66,49 @@
     const origin = window.location.origin;
     const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
-    // Extract game code from URL if present (e.g., /join/abc123)
+    // Extract game code and optional user id from URL (e.g., /join/abc123 or /join/abc123/uid)
     function extractGameCodeFromUrl() {
       const pathSegments = window.location.pathname.split('/').filter(s => s);
-      if (pathSegments.length > 1 && pathSegments[0] === 'join') {
-        return [pathSegments[1], pathSegments[2]];
+      if (pathSegments.length >= 2 && pathSegments[0] === 'join') {
+        return { gameCode: pathSegments[1], userId: pathSegments[2] || null };
       }
       return null;
     }
 
-    // Pre-fill game code if provided in URL
-    window.addEventListener('DOMContentLoaded', () => {
-      const tuple = extractGameCodeFromUrl();
-      gameCode = tuple[0]
-      userId = tuple[1]
-      if (userId) {
-        joinGame();
-      } else if (gameCode) {
-        document.getElementById('gameCode').value = gameCode.toLowerCase();
-        checkPartyExistence()
+    // Pre-fill game code if provided in URL. Validate the party and player before auto-joining.
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const info = extractGameCodeFromUrl();
+        if (!info) return;
+
+        gameCode = info.gameCode || null;
+        userId = info.userId || null;
+
+        if (gameCode) {
+          document.getElementById('gameCode').value = gameCode.toLowerCase();
+
+          // Check that the party exists before proceeding
+          const partyExists = await checkPartyExistence();
+          if (!partyExists) return; // invalid game code in URL
+
+          // If a userId was present, verify it belongs to this party before automatically joining
+          if (userId) {
+            const playerExists = await checkPlayerExistence(userId);
+            if (playerExists) {
+              // safe to reconnect
+              joinGame();
+            } else {
+              // invalid player id in URL: remove it to avoid incorrect auto-join
+              userId = null;
+              const cleanUrl = `${origin}/join/${encodeURIComponent(gameCode)}`;
+              window.history.replaceState({ gameCode }, '', cleanUrl);
+              // show username creation so user can re-join
+              document.getElementById('username_creation').classList.remove('hidden');
+            }
+          }
+        }
+      } catch (err) {
+        console.log('Error during URL prefill: ' + err);
       }
     });
 
@@ -125,6 +149,38 @@
           console.log(`Party with code ${gameCode} has been found!`);
           document.getElementById('join').classList.add("hidden")
           document.getElementById('username_creation').classList.remove("hidden")
+          return true;
+        } else {
+          console.log(`Unknown error...`)
+          return;
+        }
+      } catch (err) {
+        console.log(`Error finding game : ${err}`)
+      }
+    }
+
+    async function checkPlayerExistence(player_id) {
+      gameCode = document.getElementById('gameCode').value.toLowerCase();
+      try {
+        const res = await fetch(`${origin}/ping_player/${gameCode}/${player_id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        if (!res.ok) {
+          console.log("Can't check for player existence. Report this to the developer.");
+          return;
+        }
+
+        const data = await res.json();
+
+        if (data.action === 'player_not_found') {
+          console.log(`Player with id ${userId} couldn't be found.`);
+          return;
+        } else if (data.action === 'player_found') {
+          console.log(`Player with id ${userId} has been found!`);
+          document.getElementById('username_creation').classList.add('hidden');
+          return true;
         } else {
           console.log(`Unknown error...`)
           return;
@@ -152,13 +208,12 @@
             }
 
             userId = data.player_id;
-            
-            document.title = `BlindTester #${gameCode}`
-            // Update URL without reloading the page
-            const newUrl = `${origin}/join/${gameCode}/${userId}`;
-            window.history.replaceState({ gameCode, userId }, '', newUrl);
           };
         
+          document.title = `BlindTester #${gameCode}`
+          const newUrl = `${origin}/join/${gameCode}/${userId}`;
+          window.history.replaceState({ gameCode, userId }, '', newUrl);
+
           const wsUrl = `${wsProto}//${host}/ws/${gameCode}/${userId}`;
           startWS(wsUrl);
 
@@ -175,7 +230,11 @@
     function startWS(url) {
       ws = new WebSocket(url);
 
-      ws.onopen = () => { log('Connected to server ✔'); };
+      ws.onopen = () => { 
+        log('Connected to server ✔'); 
+        // Updating the game so that informations about it are collected if game was already started
+        try {ws.send(JSON.stringify({type: "update"}));} catch (err) {console.log(`Error: ${err}`)}
+      };
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         console.log(msg);

@@ -213,8 +213,6 @@
             document.getElementById('leaderboard').innerHTML = listHtml;
           }
         }
-
-        if (msg.event === 'user_joined') try {ws.send(JSON.stringify({type: "update"}));} catch (err) {console.log(`Error: ${err}`)};
       };
 
       ws.onclose = () => {
