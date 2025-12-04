@@ -72,14 +72,13 @@
       if (pathSegments.length >= 2 && pathSegments[0] === 'join') {
         return { gameCode: pathSegments[1], userId: pathSegments[2] || null };
       }
-      return null;
+      return { gameCode: null, userId: null};
     }
 
     // Pre-fill game code if provided in URL. Validate the party and player before auto-joining.
     window.addEventListener('DOMContentLoaded', async () => {
       try {
         const info = extractGameCodeFromUrl();
-        if (!info) return;
 
         gameCode = info.gameCode || null;
         userId = info.userId || null;
@@ -89,7 +88,12 @@
 
           // Check that the party exists before proceeding
           const partyExists = await checkPartyExistence();
-          if (!partyExists) return; // invalid game code in URL
+          if (!partyExists) {
+            userId = null;
+            const cleanUrl = `${origin}/join`;
+            window.history.replaceState({ gameCode }, '', cleanUrl);
+            return;
+          };
 
           // If a userId was present, verify it belongs to this party before automatically joining
           if (userId) {
