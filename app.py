@@ -37,6 +37,26 @@ def serve_game(game_code: str, host_id: str):
 
 @app.get("/join/{game_code}")
 def serve_join_with_code(game_code: str):
+    game_code = game_code.lower()
+
+    if game_code not in games_list:
+        raise HTTPException(404, "Game not found")
+    
+    return FileResponse(static_dir / "join.html")
+
+@app.get("/join/{game_code}/{player_id}")
+def serve_join_with_id(game_code: str, player_id: str):
+    game_code = game_code.lower()
+
+    if game_code not in games_list:
+        raise HTTPException(404, "Game not found")
+    
+    game = games_list[game_code]
+    player = game.getPlayerFromID(player_id)
+
+    if not player:
+        raise HTTPException(403, "Player not found")
+    
     return FileResponse(static_dir / "join.html")
 
 games_list: Dict[str, Game] = {}
@@ -116,6 +136,20 @@ def join_game(game_code: str, username: str):
         "status": "Player successfully added",
         "player_id": player.getID()
     }
+
+
+@app.post("/ping/{game_code}")
+def ping_game(game_code: str):
+    game_code = game_code.lower()
+
+    if game_code not in games_list:
+        return {
+            "action": "party_not_found"
+        }
+    else:
+        return {
+            "action": "party_found"
+        }
 
 
 @app.websocket("/ws/{game_code}/{user_id}")
@@ -261,11 +295,6 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                 song = game.getCurrentSong()
                 
                 if song:
-                    payload = song.getDict()
-                    payload["action"] = "next_song"
-                    print(payload)
-                    await websocket.send_json(payload)
-
                     if game_code not in active_timers:
                         await websocket.send_json(
                             {
