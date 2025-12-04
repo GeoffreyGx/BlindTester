@@ -303,6 +303,7 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                         "correct_players": game.getCorrectPlayersThisRound()
                     }
                     last_leaderboard = last_msg
+                    await websocket.send_json({"action": "awaiting_next"})
                     await broadcast(game_code, last_msg)
                 else:
                     await websocket.send_json({"action": "wrong_answer"})

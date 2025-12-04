@@ -270,9 +270,12 @@
           answer_output.innerHTML = "You can't answer right now"
         }
 
+        if (msg.action == "awaiting_next") {
+          document.getElementById("answer_box").classList.add('hidden');
+          document.getElementById("waiting_box").classList.remove('hidden');
+        }
+
         if (msg.leaderboard) {
-          document.getElementById("answer_box").classList.add('hidden')
-          document.getElementById("waiting_box").classList.remove('hidden')
           // Format leaderboard into a ranked list and render as HTML, highlighting correct players in green
           const entries = Array.isArray(msg.leaderboard) ? msg.leaderboard : Object.entries(msg.leaderboard || {});
           const correctPlayers = msg.correct_players || [];
@@ -282,7 +285,7 @@
           } else {
             // If entries is array of objects, use it; otherwise convert from dict
             let leaderboardData = entries;
-            if (entries.length > 0 && typeof entries[0][0] === 'string' && typeof entries[0][1] === 'number') {
+            if (entries.length > 0 && Array.isArray(entries[0]) && typeof entries[0][0] === 'string' && typeof entries[0][1] === 'number') {
               // Old format: convert to new format
               leaderboardData = entries.map(([username, score]) => ({
                 username: username,
@@ -295,7 +298,7 @@
             leaderboardData.sort((a, b) => b.score - a.score);
             
             const listHtml = leaderboardData.map((entry, idx) => {
-              const scoreStr = entry.score.toFixed(1);
+              const scoreStr = (entry.score || 0).toFixed(1);
               const isCorrect = entry.player_id && correctPlayers.includes(entry.player_id);
               const className = isCorrect ? 'correct' : '';
               return `<li class="${className}">${idx + 1}. ${entry.username} — ${scoreStr}</li>`;
