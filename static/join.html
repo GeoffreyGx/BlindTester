@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blind Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #111;  color: white; text-align: center;}
+    input { color: white; width: 80%; height: 4rem; max-width: 300px; text-align: center; display: block; margin-left: auto; margin-right: auto; background-color: #282828; border-color: #9850bf; border-radius: 5px; border-width: 5px; border-style: solid; margin-top: 10px; margin-bottom: 10px; font-size: x-large;}
+    button { width: 70%; height: 3rem; max-width: 250px; color: white; text-align: center; display: block; margin-left: auto; margin-right: auto; background-color: #9850bf; border-color: #9850bf; border-radius: 5px; border-width: 5px; border-style: solid; margin-top: 10px; margin-bottom: 10px; font-size: x-large; }
+    h1 { margin-top: 0px; margin-bottom: 0px;}
+    h5 { margin-top: 0px; margin-bottom: 10rem;}
+    #log { border: 1px solid #ccc; height: 200px; overflow-y: scroll; padding: 10px; }
+    .hidden { display: none; }
+    .leaderboard-list { list-style: none; padding: 0; margin: 0; font-family: monospace; font-size: larger;}
+    .leaderboard-list li { padding: 6px 0; }
+    .leaderboard-list li.correct { color: #00ff00; font-weight: bold; }
+    @keyframes wrongCodeAnimation {
+      0%    {border-color: #9850bf;}
+      50%   {border-color: red;}
+      100%  {background-color: #9850bf;}
+    }
+  </style>
+</head>
+<body>
+  <h1>BlindTester</h1>
+  <h5>Made with <span style="color: red;"><3</span> by GeoffreyGx</h5>
+
+  <div id="join">
+    <input id="gameCode" placeholder="Game code" />
+    <input id="username" placeholder="Username" />
+    <br/>
+    <button onclick="joinGame()">Join</button>
+  </div>
+
+  <div id="answer_box" class="hidden">
+    <h3>Answer</h3>
+    <input id="answer" />
+    <button id="answer_button" onclick="sendAnswer()">Guess!</button>
+    <span id="answer_output"></span>
+  </div>
+
+  <div id="waiting_box" class="hidden">
+    <h3>Hang tight... The answer is seconds away.</h3>
+  </div>
+
+  <div id="leaderboard_box" class="hidden">
+    <h3>Leaderboard</h3>
+    <ul id="leaderboard" class="leaderboard-list"></ul>    
+  </div>
+  <!--
+  <h3>Log</h3>
+  <div id="log"></div>
+  -->
+  <script>
+    let ws = null;
+    let userId = null;
+    let gameCode = null;
+
+    const host = window.location.host
+
+    // Extract game code from URL if present (e.g., /join/abc123)
+    function extractGameCodeFromUrl() {
+      const pathSegments = window.location.pathname.split('/').filter(s => s);
+      // If path is /join/{game_code}, it will be at index 1
+      if (pathSegments.length > 1 && pathSegments[0] === 'join') {
+        return pathSegments[1];
+      }
+      return null;
+    }
+
+    // Pre-fill game code if provided in URL
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlGameCode = extractGameCodeFromUrl();
+      if (urlGameCode) {
+        document.getElementById('gameCode').value = urlGameCode;
+      }
+    });
+
+    function log(msg) {
+      const logBox = document.getElementById('log');
+      if (logBox) {
+        logBox.innerHTML += msg + "\n";
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+    }
+
+    async function joinGame() {
+      gameCode = document.getElementById('gameCode').value.toLowerCase();
+      const username = document.getElementById('username').value;
+
+      try {
+        const res = await fetch(`https://${host}/join_game?game_code=` + gameCode + '&username=' + username, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!res.ok) {
+          log('Join failed: ' + res.status);
+          gameCodeInput = document.getElementById("gameCode")
+          gameCodeInput.style.animationName = "wrongCodeaAnimation"
+          gameCodeInput.style.animationDuration = "2s"
+          return;
+        }
+
+        const data = await res.json();
+        log('Join successful');
+
+        userId = data.player_id;
+        startWS(`wss://${host}/ws/` + gameCode + '/' + userId);
+
+        document.getElementById('join').classList.add('hidden');
+        document.getElementById('answer_box').classList.remove('hidden');
+      } catch (err) {
+        log('Error joining: ' + err);
+      }
+    }
+
+
+    function startWS(url) {
+      ws = new WebSocket(`wss://${host}/ws/` + gameCode + '/' + userId);
+
+      ws.onopen = () => { log('Connected to server ✔'); };
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        console.log(msg);
+
+        if (msg.action === 'next_song') {
+          document.getElementById("leaderboard_box").classList.add('hidden');
+          document.getElementById("answer_button").disabled = false;
+          document.getElementById("answer_box").classList.remove('hidden');
+        }
+
+        if (msg.action === 'countdown') {
+          log('Countdown: ' + msg.status);
+        }
+
+        if (msg.action === "time_limit_exceeded") {
+          if (msg.youtube_url) {
+            document.getElementById("answer_button").disabled = true;
+            document.getElementById("answer_box").classList.add('hidden');
+          document.getElementById("waiting_box").classList.add('hidden')
+            document.getElementById("leaderboard_box").classList.remove('hidden');
+          } else {
+            log("ERROR: No YouTube URL received.");
+          }
+        }
+
+        if (msg.action === "answering_not_available") {
+          answer_output = document.getElementById("answer_output")
+          answer_output.style.color = "red"
+          answer_output.innerHTML = "You can't answer right now"
+        }
+
+        if (msg.leaderboard) {
+          document.getElementById("answer_box").classList.add('hidden')
+          document.getElementById("waiting_box").classList.remove('hidden')
+          // Format leaderboard into a ranked list and render as HTML, highlighting correct players in green
+          const entries = Array.isArray(msg.leaderboard) ? msg.leaderboard : Object.entries(msg.leaderboard || {});
+          const correctPlayers = msg.correct_players || [];
+          
+          if (entries.length === 0) {
+            document.getElementById('leaderboard').innerHTML = '<li>No scores yet</li>';
+          } else {
+            // If entries is array of objects, use it; otherwise convert from dict
+            let leaderboardData = entries;
+            if (entries.length > 0 && typeof entries[0][0] === 'string' && typeof entries[0][1] === 'number') {
+              // Old format: convert to new format
+              leaderboardData = entries.map(([username, score]) => ({
+                username: username,
+                score: score,
+                player_id: null
+              }));
+            }
+            
+            // Sort by score descending (should already be sorted from backend, but ensure it)
+            leaderboardData.sort((a, b) => b.score - a.score);
+            
+            const listHtml = leaderboardData.map((entry, idx) => {
+              const scoreStr = entry.score.toFixed(1);
+              const isCorrect = entry.player_id && correctPlayers.includes(entry.player_id);
+              const className = isCorrect ? 'correct' : '';
+              return `<li class="${className}">${idx + 1}. ${entry.username} — ${scoreStr}</li>`;
+            }).join('');
+            
+            document.getElementById('leaderboard').innerHTML = listHtml;
+          }
+        }
+
+        if (msg.event === 'user_joined') log('User joined: ' + msg.user_id);
+      };
+
+      ws.onclose = () => log('Disconnected');
+    }
+
+    function sendAnswer() {
+      const ans = document.getElementById('answer').value;
+      ws.send(JSON.stringify({ type: 'answer', answer: ans }));
+    }
+  </script>
+</body>
+</html>

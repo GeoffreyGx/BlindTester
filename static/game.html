@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host Blind Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#111; color:white; margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+    .body { margin: 20px; position: relative; z-index: 0; }
+    #log { border: 1px solid #444; height: 200px; overflow-y: scroll; padding: 10px; background:#000; }
+    .hidden { display: none; }
+    #gameCodeBox { font-size: 1.5rem; margin: 10px 0; padding: 10px; background:#222; border-radius:6px; }
+    #player { position: relative; padding-bottom: 56.25%; /* 16:9 */ height: 0;}
+    #player iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;}
+    button { padding:10px 18px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
+    button:disabled { background:#555; cursor:not-allowed; }
+    h1 { margin-top: 0px; margin-bottom: 0px;}
+    h5 { margin-top: 0px; margin-bottom: 1rem;}
+    /* fullscreen background canvas */
+    canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: block; }
+
+    /* Two-column layout */
+    .container { display: flex; gap: 20px; align-items: flex-start; }
+    .main { flex: 1; min-width: 300px; }
+    .sidebar { width: 320px; }
+
+    /* Leaderboard box */
+    .leaderbox { background: #0f1720; border: 1px solid #2b3640; padding: 12px; border-radius: 8px; }
+    .leaderbox h3 { margin-top: 0; }
+    .leaderboard { white-space: pre-wrap; font-family: monospace; background: transparent; color: #e6eef8; }
+    .leaderboard-list { list-style: none; padding: 0; margin: 0; font-family: monospace; }
+    .leaderboard-list li { padding: 6px 0; }
+    .leaderboard-list li.correct { color: #00ff00; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <canvas id='fullscreen'></canvas>
+  <div class="body">
+    <h1>BlindTester</h1>
+    <h5>Made with <span style="color: red;"><3</span> by GeoffreyGx</h5>
+
+    <div id="create">
+      <button onclick="createGame()">Create Game</button>
+    </div>
+
+    <div id="game" class="hidden">
+      <div class="container">
+        <div class="main">
+
+          <button id="nextBtn" onclick="sendNext()">Next song</button>
+          <button id="revealBtn" onclick="revealSong()">Reveal</button>
+
+          <h3>Current song : <span id="song"></span></h3>
+          <div id="song"></div>
+
+          <div id="player" class="hidden">
+            <iframe id="yt" allow="autoplay" ></iframe>
+          </div>
+          <!--
+          <h3>Log</h3>
+          <div id="log"></div>
+          -->
+        </div>
+
+        <aside class="sidebar">
+          <div id="gameCodeBox">Game Code: <span id="gameCode"></span> <div id="qrcode"></div>
+          <div class="leaderbox">
+            <h3>Leaderboard</h3>
+            <ul id="leaderboard" class="leaderboard-list"></ul>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    let ws = null;
+    let hostId = null;
+    let gameCode = null;
+
+    const host = window.location.host
+
+
+    function log(msg) {
+      const logBox = document.getElementById('log');
+      if (logBox) {
+        logBox.innerHTML += msg + "\n";
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+    }
+
+    async function createGame() {
+      try {
+        const res = await fetch(`http://${host}/create_game`, { method: 'POST' });
+        if (!res.ok) { log('Create failed: ' + res.status); return; }
+
+        const data = await res.json();
+        gameCode = data.game_code;
+        hostId = data.host_id;
+
+        document.getElementById('gameCode').textContent = gameCode;
+        document.getElementById('create').classList.add('hidden');
+        document.getElementById('game').classList.remove('hidden');
+
+        startWS();
+      } catch (err) {
+        log('Error creating game: ' + err);
+      }
+    }
+
+    function startWS() {
+      ws = new WebSocket(`ws://${host}/ws/` + gameCode + '/' + hostId);
+
+      ws.onopen = () => {
+        log('Connected ✔');
+        // Enable next button so host can start the first round; reveal disabled until a song is active
+        const nextBtn = document.getElementById('nextBtn');
+        const revealBtn = document.getElementById('revealBtn');
+        if (nextBtn) nextBtn.disabled = false;
+        if (revealBtn) revealBtn.disabled = true;
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        console.log(msg);
+
+        if (msg.action === 'next_song') {
+          document.getElementById("fullscreen").classList.add('hidden');
+          document.getElementById('song').innerHTML = `?`;
+          document.getElementById('player').classList.add('hidden');
+
+          document.querySelectorAll('#leaderboard li').forEach(li => li.classList.remove('correct'));
+
+          const nextBtn = document.getElementById('nextBtn');
+          const revealBtn = document.getElementById('revealBtn');
+          if (nextBtn) nextBtn.disabled = true;
+          if (revealBtn) revealBtn.disabled = false;
+
+          const yt = document.getElementById('yt');
+          if (msg.youtube_url) {
+            yt.src = msg.youtube_url + '&autoplay=1';
+          } else {
+            log('ERROR: No YouTube URL received.');
+          }
+        }
+
+        if (msg.action === 'countdown') {
+          log('Countdown: ' + msg.status);
+          // show animated number in canvas (centered)
+          document.getElementById("fullscreen").classList.remove('hidden');
+          if (window.showAnimatedNumber) window.showAnimatedNumber(msg.status);
+        }
+
+        if (msg.action === 'time_limit_exceeded') {
+          if (msg.youtube_url) {
+            document.getElementById('player').classList.remove('hidden');
+            document.getElementById('song').innerHTML = `${msg.title} - ${msg.artist}`;
+          } else {
+            log('ERROR: No YouTube URL received.');
+          }
+
+          // Song has been revealed by timer or host: enable Next, disable Reveal
+          const nextBtn = document.getElementById('nextBtn');
+          const revealBtn = document.getElementById('revealBtn');
+          if (nextBtn) nextBtn.disabled = false;
+          if (revealBtn) revealBtn.disabled = true;
+        }
+
+        if (msg.leaderboard) {
+          // Format leaderboard into a ranked list and render as HTML, highlighting correct players in green
+          const entries = Array.isArray(msg.leaderboard) ? msg.leaderboard : Object.entries(msg.leaderboard || {});
+          const correctPlayers = msg.correct_players || [];
+          
+          if (entries.length === 0) {
+            document.getElementById('leaderboard').innerHTML = '<li>No scores yet</li>';
+          } else {
+            // If entries is array of objects, use it; otherwise convert from dict
+            let leaderboardData = entries;
+            if (entries.length > 0 && typeof entries[0][0] === 'string' && typeof entries[0][1] === 'number') {
+              // Old format: convert to new format
+              leaderboardData = entries.map(([username, score]) => ({
+                username: username,
+                score: score,
+                player_id: null
+              }));
+            }
+            
+            // Sort by score descending (should already be sorted from backend, but ensure it)
+            leaderboardData.sort((a, b) => b.score - a.score);
+            
+            const listHtml = leaderboardData.map((entry, idx) => {
+              const scoreStr = entry.score.toFixed(1);
+              const isCorrect = entry.player_id && correctPlayers.includes(entry.player_id);
+              const className = isCorrect ? 'correct' : '';
+              return `<li class="${className}">${idx + 1}. ${entry.username} — ${scoreStr}</li>`;
+            }).join('');
+            
+            document.getElementById('leaderboard').innerHTML = listHtml;
+          }
+        }
+
+        if (msg.event === 'user_joined') log('User joined: ' + msg.user_id);
+      };
+
+      ws.onclose = () => {
+        log('Disconnected');
+        const nextBtn = document.getElementById('nextBtn');
+        const revealBtn = document.getElementById('revealBtn');
+        if (nextBtn) nextBtn.disabled = true;
+        if (revealBtn) revealBtn.disabled = true;
+      };
+    }
+
+    function sendNext() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('WebSocket not connected');
+        return;
+      }
+
+      // Immediately toggle buttons to prevent double next; will be confirmed on next_song
+      const nextBtn = document.getElementById('nextBtn');
+      const revealBtn = document.getElementById('revealBtn');
+      if (nextBtn) nextBtn.disabled = true;
+      if (revealBtn) revealBtn.disabled = false;
+
+      ws.send(JSON.stringify({ type: 'next' }));
+    }
+
+    function revealSong() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('WebSocket not connected');
+        return;
+      }
+
+      try {
+        // Disable reveal immediately to avoid duplicate requests; will be confirmed on time_limit_exceeded
+        const revealBtn = document.getElementById('revealBtn');
+        if (revealBtn) revealBtn.disabled = true;
+
+        ws.send(JSON.stringify({ type: 'reveal' }));
+        log('Reveal requested');
+      } catch (err) {
+        log('Reveal failed: ' + err);
+      }
+    }
+
+    // Setup fullscreen canvas and draw centered radial gradient
+    function setupCanvasGradient() {
+      const canvas = document.getElementById('fullscreen');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      let width = 0;
+      let height = 0;
+      const dpr = () => window.devicePixelRatio || 1;
+
+      function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        const ratio = dpr();
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        drawBackground();
+      }
+
+      function drawBackground() {
+        ctx.clearRect(0, 0, width, height);
+        const cx = width / 2;
+        const cy = height / 2;
+        const radius = Math.max(width, height) * 0.7;
+        const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+        grd.addColorStop(0, 'rgba(0,0,0,0.85)');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      // Animated number overlay
+      let anim = null;
+      function showAnimatedNumber(value, duration = 800) {
+        if (anim) cancelAnimationFrame(anim.id);
+        const start = performance.now();
+        const cx = width / 2;
+        const cy = height / 2;
+
+        function frame(now) {
+          const t = Math.min(1, (now - start) / duration);
+          // ease out
+          const ease = 1 - Math.pow(1 - t, 3);
+
+          drawBackground();
+
+          // draw number scaled and faded
+          const maxSize = Math.min(width, height) * 0.25; // responsive
+          const size = maxSize * (0.6 + 0.6 * (1 - ease));
+          ctx.font = `${Math.round(size)}px Arial`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const alpha = 1 - ease;
+          ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+          ctx.fillText(String(value), cx, cy);
+
+          if (t < 1) {
+            anim = { id: requestAnimationFrame(frame) };
+          } else {
+            anim = null;
+            // keep background after animation
+            drawBackground();
+          }
+        }
+
+        anim = { id: requestAnimationFrame(frame) };
+      }
+
+      // Expose to global so message handler can call it
+      window.showAnimatedNumber = showAnimatedNumber;
+
+      // Initial layout and listeners
+      resize();
+      window.addEventListener('resize', resize);
+    }
+
+    setupCanvasGradient()
+    document.getElementById("fullscreen").classList.add('hidden');
+
+    var qrcode = new QRCode("qrcode");
+    qrcode.makeCode('jzelakjejlazkej')
+  </script>
+</body>
+</html>

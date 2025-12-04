@@ -1,0 +1,59 @@
+{
+    "songs": [
+        {
+            "artist": "Adele",
+            "title": "Hello",
+            "youtube_url": "https://www.youtube.com/embed/YQHsXMglC9A?start=76"
+        },
+        {
+            "artist": "The Beatles",
+            "title": "Hey Jude",
+            "youtube_url": "https://www.youtube.com/embed/A_MjCqQoLLA?start=0"
+        },
+        {
+            "artist": "Queen",
+            "title": "Bohemian Rhapsody",
+            "youtube_url": "https://www.youtube.com/embed/fJ9rUzIMcZQ?start=0"
+        },
+        {
+            "artist": "David Bowie",
+            "title": "Space Oddity",
+            "youtube_url": "https://www.youtube.com/embed/iYYRH4apXDo?start=0"
+        },
+        {
+            "artist": "Pink Floyd",
+            "title": "Wish You Were Here",
+            "youtube_url": "https://www.youtube.com/embed/IXdNnw99-Ic?start=0"
+        },
+        {
+            "artist": "The Weeknd",
+            "title": "Blinding Lights",
+            "youtube_url": "https://www.youtube.com/embed/4NRXx6U8ABQ?start=0"
+        },
+        {
+            "artist": "Billie Eilish",
+            "title": "Bad Guy",
+            "youtube_url": "https://www.youtube.com/embed/DyDfgMOUjCI?start=0"
+        },
+        {
+            "artist": "Taylor Swift",
+            "title": "Love Story",
+            "youtube_url": "https://www.youtube.com/embed/8xg3vE8Ie_E?start=0"
+        },
+        {
+            "artist": "Dua Lipa",
+            "title": "Levitating",
+            "youtube_url": "https://www.youtube.com/embed/TUVcZfQe-Kw?start=0"
+        },
+        {
+            "artist": "Imagine Dragons",
+            "title": "Radioactive",
+            "youtube_url": "https://www.youtube.com/embed/ktvTqknDobU?start=0"
+        },
+        {
+            "artist": "Rick Astley",
+            "title": "Never Gonna Give You Up",
+            "youtube_url": "https://www.youtube.com/embed/dQw4w9WgXcQ?start=0"
+        }
+    ]
+}
