@@ -31,9 +31,9 @@ def server_index():
 def serve_join():
     return FileResponse(static_dir / "join.html")
 
-@app.get("/game")
-def serve_game():
-    return FileResponse(static_dir / "game.html")
+@app.get("/party/{game_code}/{host_id}")
+def serve_game(game_code: str, host_id: str):
+    return FileResponse(static_dir / "party.html")
 
 @app.get("/join/{game_code}")
 def serve_join_with_code(game_code: str):
@@ -257,6 +257,38 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
             # ---------------------------------------------------------
             # Elapsed broadcasting (moved to periodic loop recommended)
             # ---------------------------------------------------------
+            elif msg_type == "update":
+                song = game.getCurrentSong()
+                
+                if song:
+                    payload = song.getDict()
+                    payload["action"] = "next_song"
+                    print(payload)
+                    await websocket.send_json(payload)
+
+                    if game_code not in active_timers:
+                        await websocket.send_json(
+                            {
+                                "action": "time_limit_exceeded",
+                                "title": song.title,
+                                "artist": song.artist,
+                                "youtube_url": song.youtube_url,
+                            },
+                        )
+
+                leaderboard_list = [
+                    {"username": p.getUsername(), "score": p.score, "player_id": p.getID()}
+                    for p in game.getLeaderboard()
+                ]
+                # Sort by score descending
+                leaderboard_list.sort(key=lambda x: x["score"], reverse=True)
+                print(leaderboard_list)
+                
+                await websocket.send_json({
+                    "leaderboard": leaderboard_list,
+                    "correct_players": game.getCorrectPlayersThisRound()
+                })
+
 
     except WebSocketDisconnect:
         # Cleanup and notify

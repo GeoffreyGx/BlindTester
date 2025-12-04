@@ -8,9 +8,9 @@
 <body>
     <h1>BlindTester</h1>
     <h5>Made with <span style="color: red;"><3</span> by GeoffreyGx</h5>
-    <a class="btn" href="/game">Join</a>
+    <button href="/join">Join</a>
     <br />
-    <a class="btn" href="/join">Create Game</a>
+    <button onclick="createParty()">Create Game</a>
     <style>
         h1 { margin-top: 0px; margin-bottom: 0px;}
         h5 { margin-top: 0px; margin-bottom: 10rem;}
@@ -18,7 +18,25 @@
         button { padding:10px 18px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
     </style>
     <script>
-        
+        const host = window.location.host
+        const origin = window.location.origin;
+
+        async function createParty() {
+            let hostId = null;
+            let gameCode = null;
+            try {
+                const res = await fetch(`${origin}/create_game`, { method: 'POST' });
+                if (!res.ok) { log('Create failed: ' + res.status); return; }
+
+                const data = await res.json();
+                gameCode = data.game_code;
+                hostId = data.host_id;
+
+                window.location.pathname = `/party/${gameCode}/${hostId}`
+            } catch (err) {
+                console.log(`Error : ${err}`)
+            }
+        }
     </script>
 </body>
 </html>

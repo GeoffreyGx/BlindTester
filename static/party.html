@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Host Blind Test</title>
+  <title>BlindTester #NONE</title>
   <style>
     body { font-family: Arial, sans-serif; background:#111; color:white; margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
     .body { margin: 20px; position: relative; z-index: 0; }
@@ -40,11 +40,7 @@
   <div class="body">
     <h1>BlindTester</h1>
     <h5>Made with <span style="color: red;"><3</span> by GeoffreyGx</h5>
-
-    <div id="create">
-      <button onclick="createGame()">Create Game</button>
-    </div>
-
+    <p id="errorHandler"></p>
     <div id="game" class="hidden">
       <div class="container">
         <div class="main">
@@ -92,18 +88,20 @@
       }
     }
 
-    async function createGame() {
+    function extractGameCodeFromUrl() {
+      const pathSegments = window.location.pathname.split('/').filter(s => s);
+      // If path is /join/{game_code}, it will be at index 1
+      if (pathSegments.length > 2 && pathSegments[0] === 'party') {
+        return [pathSegments[1], pathSegments[2]];
+      }
+      return null;
+    }
+
+    async function joinGame(gameCode, hostId) {
       try {
-        const res = await fetch(`${origin}/create_game`, { method: 'POST' });
-        if (!res.ok) { log('Create failed: ' + res.status); return; }
-
-        const data = await res.json();
-        gameCode = data.game_code;
-        hostId = data.host_id;
-
         document.getElementById('gameCode').textContent = gameCode;
-        document.getElementById('create').classList.add('hidden');
         document.getElementById('game').classList.remove('hidden');
+        document.title = `BlindTester #${gameCode}`
 
         var qrcode = new QRCode("qrcode", {
           text: `${origin}/join/${encodeURIComponent(gameCode)}`,
@@ -126,7 +124,10 @@
       ws = new WebSocket(url);
 
       ws.onopen = () => {
-        log('Connected ✔');
+        console.log('Connected ✔');
+        // Updating the game so that informations about it are collected if game was already started
+        try {ws.send(JSON.stringify({type: "update"}));} catch (err) {console.log(`Error: ${err}`)}
+        console.log("Updating data...")
         // Enable next button so host can start the first round; reveal disabled until a song is active
         const nextBtn = document.getElementById('nextBtn');
         const revealBtn = document.getElementById('revealBtn');
@@ -213,7 +214,7 @@
           }
         }
 
-        if (msg.event === 'user_joined') log('User joined: ' + msg.user_id);
+        if (msg.event === 'user_joined') try {ws.send(JSON.stringify({type: "update"}));} catch (err) {console.log(`Error: ${err}`)};
       };
 
       ws.onclose = () => {
@@ -339,6 +340,17 @@
 
     setupCanvasGradient()
     document.getElementById("fullscreen").classList.add('hidden');
+
+    try {
+      const tuple = extractGameCodeFromUrl();
+      const gameCode = tuple[0];
+      const hostId = tuple[1];
+      console.log(`Establishing connection to websockets using code ${gameCode} and identifier ${hostId}`);
+      joinGame(gameCode, hostId);
+    } catch (err) {
+      document.getElementById('errorHandler').innerHTML = "Can't load party right now..."
+      console.log(`Error: ${err}`)
+    }
   </script>
 </body>
 </html>
