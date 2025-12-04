@@ -58,10 +58,10 @@
           <div id="player" class="hidden">
             <iframe id="yt" allow="autoplay" ></iframe>
           </div>
-          <!--
+          
           <h3>Log</h3>
           <div id="log"></div>
-          -->
+          
         </div>
 
         <aside class="sidebar">
@@ -113,9 +113,8 @@
           colorLight : "#ffffff",
           correctLevel : QRCode.CorrectLevel.H
         });
-    qrcode.makeCode()
 
-        const wsUrl = `${wsProto}//${host}/ws/${gameCode}/${userId}`;
+        const wsUrl = `${wsProto}//${host}/ws/${gameCode}/${hostId}`;
         startWS(wsUrl);
       } catch (err) {
         log('Error creating game: ' + err);
