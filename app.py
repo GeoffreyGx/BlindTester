@@ -1,6 +1,4 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
-import uvicorn
 import asyncio
 import time
 from typing import Dict, Tuple
