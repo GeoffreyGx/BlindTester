@@ -99,8 +99,7 @@ def create_game():
     return {
         "status": "Game successfully created",
         "game_code": game.getCode(),
-        "host_id": game.getHostID(),
-        "host_ws": f"ws://127.0.0.1:8600/ws/{game.getCode()}/{game.getHostID()}"
+        "host_id": game.getHostID()
     }
 
 
@@ -117,8 +116,7 @@ def join_game(game_code: str, username: str):
 
     return {
         "status": "Player successfully added",
-        "player_id": player.getID(),
-        "host_ws": f"ws://127.0.0.1:8600/ws/{game.getCode()}/{player.getID()}"
+        "player_id": player.getID()
     }
 
 
@@ -267,6 +265,3 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
         if (game_code, user_id) in connections_list:
             del connections_list[(game_code, user_id)]
         await broadcast(game_code, {"event": "user_left", "user_id": user_id})
-
-if __name__ == "__main__":
-    uvicorn.run("app:app", host="127.0.0.1", port=8600, reload=True)

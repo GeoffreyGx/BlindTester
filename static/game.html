@@ -9,7 +9,8 @@
     .body { margin: 20px; position: relative; z-index: 0; }
     #log { border: 1px solid #444; height: 200px; overflow-y: scroll; padding: 10px; background:#000; }
     .hidden { display: none; }
-    #gameCodeBox { font-size: 1.5rem; margin: 10px 0; padding: 10px; background:#222; border-radius:6px; }
+    #gameCodeBox { font-size: 1rem; margin: 10px 0; padding: 10px; background:#222; border-radius:6px; display: flex; gap: calc(320px - 10px - 10px - 90px - 106.78px - 6px);}
+    #gameCode { font-size: 2rem; }
     #player { position: relative; padding-bottom: 56.25%; /* 16:9 */ height: 0;}
     #player iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;}
     button { padding:10px 18px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
@@ -18,6 +19,7 @@
     h5 { margin-top: 0px; margin-bottom: 1rem;}
     /* fullscreen background canvas */
     canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: block; }
+    #qrcode { width: 90px; height: 90px; padding: 4px; background-color: white; image-rendering: pixelated;}
 
     /* Two-column layout */
     .container { display: flex; gap: 20px; align-items: flex-start; }
@@ -63,7 +65,7 @@
         </div>
 
         <aside class="sidebar">
-          <div id="gameCodeBox">Game Code: <span id="gameCode"></span> <div id="qrcode"></div>
+          <div id="gameCodeBox"><div>Game Code: <br /><span id="gameCode"></span></div><div id="qrcode"></div></div>
           <div class="leaderbox">
             <h3>Leaderboard</h3>
             <ul id="leaderboard" class="leaderboard-list"></ul>
@@ -79,7 +81,8 @@
     let gameCode = null;
 
     const host = window.location.host
-
+    const origin = window.location.origin;
+    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
     function log(msg) {
       const logBox = document.getElementById('log');
@@ -91,7 +94,7 @@
 
     async function createGame() {
       try {
-        const res = await fetch(`http://${host}/create_game`, { method: 'POST' });
+        const res = await fetch(`${origin}/create_game`, { method: 'POST' });
         if (!res.ok) { log('Create failed: ' + res.status); return; }
 
         const data = await res.json();
@@ -102,14 +105,25 @@
         document.getElementById('create').classList.add('hidden');
         document.getElementById('game').classList.remove('hidden');
 
-        startWS();
+        var qrcode = new QRCode("qrcode", {
+          text: `${origin}/join/${encodeURIComponent(gameCode)}`,
+          width: 90,
+          height: 90,
+          colorDark : "#000000",
+          colorLight : "#ffffff",
+          correctLevel : QRCode.CorrectLevel.H
+        });
+    qrcode.makeCode()
+
+        const wsUrl = `${wsProto}//${host}/ws/${gameCode}/${userId}`;
+        startWS(wsUrl);
       } catch (err) {
         log('Error creating game: ' + err);
       }
     }
 
-    function startWS() {
-      ws = new WebSocket(`ws://${host}/ws/` + gameCode + '/' + hostId);
+    function startWS(url) {
+      ws = new WebSocket(url);
 
       ws.onopen = () => {
         log('Connected ✔');
@@ -325,9 +339,6 @@
 
     setupCanvasGradient()
     document.getElementById("fullscreen").classList.add('hidden');
-
-    var qrcode = new QRCode("qrcode");
-    qrcode.makeCode('jzelakjejlazkej')
   </script>
 </body>
 </html>
