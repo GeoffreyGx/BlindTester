@@ -58,14 +58,14 @@
           <div id="player" class="hidden">
             <iframe id="yt" allow="autoplay" ></iframe>
           </div>
-          
+          <!--
           <h3>Log</h3>
           <div id="log"></div>
-          
+          -->
         </div>
 
         <aside class="sidebar">
-          <div id="gameCodeBox"><div>Game Code: <br /><span id="gameCode"></span></div><div id="qrcode"></div></div>
+          <div id="gameCodeBox"><div>Game Code: <br /><span id="gameCode"></span></div><div id="qrcode" class="hidden"></div></div>
           <div class="leaderbox">
             <h3>Leaderboard</h3>
             <ul id="leaderboard" class="leaderboard-list"></ul>
@@ -113,6 +113,7 @@
           colorLight : "#ffffff",
           correctLevel : QRCode.CorrectLevel.H
         });
+        document.getElementById("qrcode").classList.remove("hidden")
 
         const wsUrl = `${wsProto}//${host}/ws/${gameCode}/${hostId}`;
         startWS(wsUrl);
