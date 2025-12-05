@@ -122,13 +122,13 @@ def create_game():
 
 
 @app.post("/join_game")
-def join_game(game_code: str, username: str):
+def join_game(game_code: str):
     game_code = game_code.lower()
 
     if game_code not in games_list:
         raise HTTPException(404, "Game not found")
 
-    player = Player(username)
+    player = Player()
     game = games_list[game_code]
     game.addPlayer(player)
 
@@ -136,7 +136,7 @@ def join_game(game_code: str, username: str):
         "status": "Player successfully added",
         "player_id": player.getID()
     }
-
+    
 
 @app.post("/ping/{game_code}")
 def ping_game(game_code: str):
@@ -164,6 +164,26 @@ def ping_player(game_code: str, player_id: str):
         else:
             return {
                 "action": "player_found"
+            }
+        
+@app.post("/ping_username/{game_code}/{player_id}")
+def ping_username(game_code: str, player_id: str):
+    game_code = game_code.lower()
+    game = games_list[game_code]
+    player = game.getPlayerFromID(player_id)
+
+    if game:
+        if player == None:
+            return {
+                "action": "username_not_set"
+            }
+        elif player.getUsername() == None:
+            return {
+                "action": "username_not_set"
+            }
+        else:
+            return {
+                "action": "username_set"
             }
 
 @app.websocket("/ws/{game_code}/{user_id}")
@@ -257,6 +277,28 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                         "youtube_url": song.youtube_url,
                     }
                 await broadcast(game_code, last_msg)
+
+            # ---------------------------------------------------------
+            # Player joins and sets its username
+            # ---------------------------------------------------------
+            elif msg_type == "set_username":
+                player = game.getPlayerFromID(user_id)
+
+                if player:
+                    try:
+                        username = data.get("username")
+                        if username:
+                            player.setUsername(username)
+                            await websocket.send_json({"action": "username_ok"})
+                            await broadcast(game_code, {
+                                "action": "username_set",
+                                "username": username,
+                                "user_id": user_id
+                            })
+                        else:
+                            await websocket.send_json({"action": "username_failed"})
+                    except:
+                        await websocket.send_json({"action": "username_empty_or_errored"})
 
             # ---------------------------------------------------------
             # Player answers

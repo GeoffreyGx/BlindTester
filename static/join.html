@@ -29,18 +29,18 @@
   <div id="join">
     <input id="gameCode" placeholder="Game code" />
     <p id="join_message_box">‎</p>
-    <button onclick="checkPartyExistence()">Join</button>
+    <button onclick="joinGameWithButton()">Join</button>
   </div>
 
   <div id="username_creation" class="hidden">
-    <input id="username" placeholder="Username" />
-    <br>
-    <button onclick="joinGame()">Join</button>
+    <input id="userName" placeholder="Username" />
+    <p id="username_message_box">‎</p>
+    <button onclick="setUsername()">Join</button>
   </div>
 
   <div id="answer_box" class="hidden">
     <h3>Answer</h3>
-    <input id="answer" />
+    <input id="answer" placeholder="Answer"/>
     <button id="answer_button" onclick="sendAnswer()">Guess!</button>
     <span id="answer_output"></span>
   </div>
@@ -93,22 +93,45 @@
             const cleanUrl = `${origin}/join`;
             window.history.replaceState({ gameCode }, '', cleanUrl);
             return;
-          };
-
-          // If a userId was present, verify it belongs to this party before automatically joining
-          if (userId) {
-            const playerExists = await checkPlayerExistence(userId);
-            if (playerExists) {
-              // safe to reconnect
-              joinGame();
+          } else {
+            if (userId) {
+              const playerExists = await checkPlayerExistence(userId);
+              if (!playerExists) {
+                userId = null;
+                const cleanUrl = `${origin}/join/${encodeURIComponent(gameCode)}`;
+                window.history.replaceState({ gameCode }, '', cleanUrl);
+                // show username creation so user can re-join
+                document.getElementById('username_creation').classList.remove('hidden');
+                try {
+                  joinGame();
+                } catch (err) {
+                  console.log(`Connection failed : ${err}`)
+                }
+                return;
+              } else {
+                usernameExistence = await checkUsernameExistence()
+                if (usernameExistence) {
+                  document.getElementById('username_creation').classList.add('hidden');
+                  document.getElementById('answer_box').classList.remove('hidden');
+                } else {
+                  document.getElementById('username_creation').classList.remove('hidden');
+                  document.getElementById('answer_box').classList.add('hidden');
+                }
+                try {
+                  joinGame();
+                } catch (err) {
+                  console.log(`Connection failed : ${err}`)
+                }
+                return;
+              }
             } else {
-              // invalid player id in URL: remove it to avoid incorrect auto-join
-              userId = null;
-              const cleanUrl = `${origin}/join/${encodeURIComponent(gameCode)}`;
-              window.history.replaceState({ gameCode }, '', cleanUrl);
-              // show username creation so user can re-join
-              document.getElementById('username_creation').classList.remove('hidden');
-            }
+              try {
+                  joinGame();
+                } catch (err) {
+                  console.log(`Connection failed : ${err}`)
+                }
+              return;
+            };
           }
         }
       } catch (err) {
@@ -124,8 +147,38 @@
       }
     }
 
+    async function checkUsernameExistence() {
+      try {
+        const res = await fetch(`${origin}/ping_username/${gameCode}/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        if (!res.ok) {
+          console.log("Can't check for party existence. Report this to the developer.");
+          return;
+        }
+
+        const data = await res.json()
+
+        if (data.action === 'username_not_set') {
+          console.log(`Username does not appear to have been set for user id : ${gameCode}`)
+          return false;
+        } else if (data.action === 'username_set') {
+          console.log(`Username found`)
+          return true;
+        } else {
+          console.log(`Unknown error...`)
+          return;
+        }
+      } catch (err) {
+        console.log(`Error checking for username existence : ${err}`)
+      }
+    }
+
     async function checkPartyExistence() {
       gameCode = document.getElementById('gameCode').value.toLowerCase();
+      console.log(gameCode)
       try {
         const res = await fetch(`${origin}/ping/${gameCode}`, {
           method: 'POST',
@@ -148,12 +201,12 @@
           gameCodeInput = document.getElementById("gameCode");
           gameCodeInput.style.animationName = "wrongCodeAnimation";
           gameCodeInput.style.animationDuration = "2s";
-          return;
+          return false;
         } else if (data.action === 'party_found') {
           console.log(`Party with code ${gameCode} has been found!`);
           document.getElementById('join').classList.add("hidden")
-          document.getElementById('username_creation').classList.remove("hidden")
-          return true;
+          document.getElementById('username_creation').classList.remove("hidden");
+          return gameCode;
         } else {
           console.log(`Unknown error...`)
           return;
@@ -195,40 +248,37 @@
     }
 
     async function joinGame() {
-      if (gameCode) {
         try {
           if (!userId) {
-            const username = document.getElementById('username').value;
-            const res = await fetch(`${origin}/join_game?game_code=${encodeURIComponent(gameCode)}&username=${encodeURIComponent(username)}`, {
+            const res = await fetch(`${origin}/join_game?game_code=${encodeURIComponent(gameCode)}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
             })
-
             const data = await res.json();
             console.log("You've been successfully added to the party");
-
             if (!res.ok) {
             console.log("Can't join party right now...")
             }
-
             userId = data.player_id;
           };
         
           document.title = `BlindTester #${gameCode}`
           const newUrl = `${origin}/join/${gameCode}/${userId}`;
           window.history.replaceState({ gameCode, userId }, '', newUrl);
-
           const wsUrl = `${wsProto}//${host}/ws/${gameCode}/${userId}`;
           startWS(wsUrl);
-
           document.getElementById('join').classList.add('hidden')
-          document.getElementById('username_creation').classList.add('hidden');
-          document.getElementById('answer_box').classList.remove('hidden');
-        } catch (err) {
+          } catch (err) {
           console.log('Error joining: ' + err);
         }
-      }
     }
+
+    async function joinGameWithButton() {
+      gameCodeExistance = await checkPartyExistence()
+      if (gameCodeExistance) {
+        joinGame()
+      }
+    } 
 
 
     function startWS(url) {
@@ -242,6 +292,21 @@
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         console.log(msg);
+
+        if (msg.action === 'username_ok') {
+          document.getElementById('username_creation').classList.add('hidden');
+          document.getElementById('answer_box').classList.remove('hidden');
+        }
+
+        if (msg.action === 'username_failed') {
+          document.getElementById('username_message_box').style.color = '#ff3d3d'        
+          document.getElementById('username_message_box').innerHTML = "Can't set username..."
+        }
+
+        if (msg.action === 'username_empty_or_errored') {
+          document.getElementById('username_message_box').style.color = '#ff3d3d'        
+          document.getElementById('username_message_box').innerHTML = "Username can't be empty"
+        }
 
         if (msg.action === 'next_song_client') {
           document.getElementById("leaderboard_box").classList.add('hidden');
@@ -257,7 +322,7 @@
           if (msg.youtube_url) {
             document.getElementById("answer_button").disabled = true;
             document.getElementById("answer_box").classList.add('hidden');
-          document.getElementById("waiting_box").classList.add('hidden')
+            document.getElementById("waiting_box").classList.add('hidden');
             document.getElementById("leaderboard_box").classList.remove('hidden');
           } else {
             log("ERROR: No YouTube URL received.");
@@ -312,6 +377,11 @@
       };
 
       ws.onclose = () => log('Disconnected');
+    }
+
+    function setUsername() {
+      const username = document.getElementById('userName').value;
+      ws.send(JSON.stringify({ type: 'set_username', username: username }));
     }
 
     function sendAnswer() {

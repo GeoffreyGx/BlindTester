@@ -14,13 +14,16 @@ class User:
 
 
 class Player(User):
-    def __init__(self, username: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.username = username
+        self.username = "Connecting..."
         self.score = 0.0
 
-    def getUsername(self) -> str:
-        return self.username
+    def setUsername(self, username: str) -> None:
+        self.username = username
+
+    def getUsername(self) -> str | None:
+        return self.username if self.username != "Connecting..." else None
 
     def alterScore(self, elapsed: float, score: int) -> None:
         """Update score with exponential decay."""
