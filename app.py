@@ -196,6 +196,7 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                 if game.isGameFinished():
                     last_msg = {"action": "no_songs_left"}
                     await broadcast(game_code, last_msg)
+                    del games_list[game_code]
                     continue
 
                 if user_id != game.getHostID():
@@ -216,7 +217,8 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                 if song:
                     payload = song.getDict()
                     payload["action"] = "next_song"
-                    last_msg = payload
+                    await websocket.send_json(payload)
+                    last_msg = {"action": "next_song_client"}
                     await broadcast(game_code, last_msg)
                     
                     # Cancel any existing timer for this game
