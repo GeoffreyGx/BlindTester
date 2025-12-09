@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style/editor.css') }}">
+    <title>BlindTester Editor</title>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="newSong()">Add a new song</button>
+        <button onclick="exportToJSON()">Export to JSON</button>
+    </div>
+    <div class="sidebar" id="sidebar">
+
+    </div>
+    <div class="content" id="content">
+
+    </div>
+    <script src="http://cdn.jsdelivr.net/g/filesaver.js"></script>
+    <script src="{{ url_for('static', path='/js/editor.js') }}"></script>
+</body>
+</html>
