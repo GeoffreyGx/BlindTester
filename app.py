@@ -175,15 +175,15 @@ def ping_username(game_code: str, player_id: str):
     if game:
         if player == None:
             return {
-                "action": "username_not_set"
+                "action": "username_not_known"
             }
         elif player.getUsername() == None:
             return {
-                "action": "username_not_set"
+                "action": "username_not_known"
             }
         else:
             return {
-                "action": "username_set"
+                "action": "username_known"
             }
 
 @app.websocket("/ws/{game_code}/{user_id}")

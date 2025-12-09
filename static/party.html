@@ -9,10 +9,10 @@
     .body { margin: 20px; position: relative; z-index: 0; }
     #log { border: 1px solid #444; height: 200px; overflow-y: scroll; padding: 10px; background:#000; }
     .hidden { display: none; }
-    #gameCodeBox { font-size: 1rem; margin: 10px 0; padding: 10px; background:#222; border-radius:6px; display: flex; gap: calc(320px - 10px - 10px - 90px - 106.78px - 6px);}
+    #gameCodeBox { font-size: 1rem; margin-bottom: 10px; padding: 10px; background:#222; border-radius:6px; display: flex; gap: calc(320px - 10px - 10px - 90px - 106.78px - 6px);}
     #gameCode { font-size: 2rem; }
     #player { position: relative; padding-bottom: 56.25%; /* 16:9 */ height: 0;}
-    #player iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;}
+    #player iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
     button { padding:10px 18px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
     button:disabled { background:#555; cursor:not-allowed; }
     h1 { margin-top: 0px; margin-bottom: 0px;}
@@ -22,9 +22,10 @@
     #qrcode { width: 90px; height: 90px; padding: 4px; background-color: white; image-rendering: pixelated;}
 
     /* Two-column layout */
-    .container { display: flex; gap: 20px; align-items: flex-start; }
-    .main { flex: 1; min-width: 300px; }
+    .container { display: flex; gap: 10px; align-items: flex-start; }
+    #main { flex: 1; min-width: 300px; }
     .sidebar { width: 320px; }
+    #waiting_room { flex: 1 }
 
     /* Leaderboard box */
     .leaderbox { background: #0f1720; border: 1px solid #2b3640; padding: 12px; border-radius: 8px; }
@@ -33,6 +34,9 @@
     .leaderboard-list { list-style: none; padding: 0; margin: 0; font-family: monospace; }
     .leaderboard-list li { padding: 6px 0; }
     .leaderboard-list li.correct { color: #00ff00; font-weight: bold; }
+
+    #playerContainer { display: flex; align-items: center; justify-content: center; margin-top: 10px; gap: 10px; flex-wrap: wrap;}
+    .playerCard { padding: 25px; background-color: #555555; border:none; border-radius:6px; font-size: large; }
   </style>
 </head>
 <body>
@@ -41,10 +45,13 @@
     <h1>BlindTester</h1>
     <h5>Made with <span style="color: red;"><3</span> by GeoffreyGx</h5>
     <p id="errorHandler"></p>
-    <div id="game" class="hidden">
+    <div id="game">
       <div class="container">
-        <div class="main">
-
+        <div id="waiting_room" class="hidden">
+          <button id="startGame" onclick="startGame()">Start Game</button>
+          <div id="playerContainer"><p>Join and see your name on the screen</p></div>
+        </div>
+        <div id="main" class="hidden">
           <button id="nextBtn" onclick="sendNext()">Next song</button>
           <button id="revealBtn" onclick="revealSong()">Reveal</button>
 
@@ -52,7 +59,7 @@
           <div id="song"></div>
 
           <div id="player" class="hidden">
-            <iframe id="yt" allow="autoplay" ></iframe>
+            <iframe id="yt" allow="autoplay"></iframe>
           </div>
           <!--
           <h3>Log</h3>
@@ -75,6 +82,7 @@
     let ws = null;
     let hostId = null;
     let gameCode = null;
+    let usernameList = [];
 
     const host = window.location.host
     const origin = window.location.origin;
@@ -100,7 +108,7 @@
     async function joinParty(gameCode, hostId) {
       try {
         document.getElementById('gameCode').textContent = gameCode;
-        document.getElementById('game').classList.remove('hidden');
+        document.getElementById('waiting_room').classList.remove('hidden');
         document.title = `BlindTester #${gameCode}`
 
         var qrcode = new QRCode("qrcode", {
@@ -213,6 +221,10 @@
             document.getElementById('leaderboard').innerHTML = listHtml;
           }
         }
+
+        if (msg.action == "username_set") {
+          addToPlayerList(msg.username, msg.user_id)
+        }
       };
 
       ws.onclose = () => {
@@ -255,6 +267,12 @@
       } catch (err) {
         log('Reveal failed: ' + err);
       }
+    }
+
+    function startGame() {
+      document.getElementById("waiting_room").classList.add("hidden")
+      document.getElementById("main").classList.remove("hidden")
+      sendNext()
     }
 
     // Setup fullscreen canvas and draw centered radial gradient
@@ -334,6 +352,15 @@
       // Initial layout and listeners
       resize();
       window.addEventListener('resize', resize);
+    }
+
+    function addToPlayerList(username, user_id) {
+      usernameList.push([username, user_id])
+      html = ""
+      usernameList.forEach((value) => {
+        html += `<span class="playerCard">${value[0]}</span>`
+      })
+      document.getElementById('playerContainer').innerHTML = html
     }
 
     setupCanvasGradient()

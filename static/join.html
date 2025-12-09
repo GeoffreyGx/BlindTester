@@ -161,10 +161,10 @@
 
         const data = await res.json()
 
-        if (data.action === 'username_not_set') {
+        if (data.action === 'username_not_known') {
           console.log(`Username does not appear to have been set for user id : ${gameCode}`)
           return false;
-        } else if (data.action === 'username_set') {
+        } else if (data.action === 'username_known') {
           console.log(`Username found`)
           return true;
         } else {
