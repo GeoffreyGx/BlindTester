@@ -1,3 +1,171 @@
 body {
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background-color: #3d2464;
+    color: #ffffff;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Top toolbar */
+.toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: linear-gradient(90deg, rgba(0,0,0,0.12), rgba(255,255,255,0.02));
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    z-index: 20;
+}
+
+.toolbar button {
+    background: linear-gradient(180deg, #8a6bff, #6b4bff);
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(75,50,140,0.25);
+}
+
+.toolbar button:active { transform: translateY(1px); }
+
+/* Layout: sidebar + content */
+.sidebar {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    padding: 12px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.06);
+    border-right: 1px solid rgba(255,255,255,0.04);
+}
+
+.content {
+    margin-left: 260px;
+    padding: 80px 24px 24px 24px;
+    min-height: calc(100vh - 80px);
+}
+
+/* Song thumbnail items in the sidebar */
+.songThumbnail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 140ms ease, background-color 140ms ease;
+}
+
+.songThumbnail span {
+    font-size: 14px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.songThumbnail:hover {
+    background: rgba(255,255,255,0.06);
+    transform: translateX(4px);
+}
+
+/* Content area elements */
+.content h3 {
+    margin: 0 0 6px 0;
+    font-size: 20px;
+}
+
+.content h5 {
+    margin: 0 0 12px 0;
+    font-weight: 400;
+    color: #e6e6ff;
+}
+
+label {
+    display: block;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #e6e6ff;
+}
+
+input[type="text"], input[type="url"], input {
+    width: 100%;
+    padding: 8px 10px;
+    margin-top: 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.12);
+    color: #fff;
+    box-sizing: border-box;
+}
+
+.content button {
+    margin-top: 12px;
+    margin-right: 8px;
+    background: #7b5cff;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Player container - keeps aspect ratio responsive */
+#player {
+    margin-top: 12px;
+    width: 640px;
+    height: 390px;
+    max-width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    background: #000;
+}
+
+/* Small helpers */
+.toolbar .spacer { flex: 1 1 auto; }
+
+/* Scrollbar styles (WebKit) */
+.sidebar::-webkit-scrollbar, .content::-webkit-scrollbar { width: 10px; height: 10px; }
+.sidebar::-webkit-scrollbar-thumb, .content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 6px; }
+
+/* Responsive: collapse sidebar for narrow viewports */
+@media (max-width: 900px) {
+    .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        top: 56px;
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 8px;
+    }
+
+    .content {
+        margin-left: 0;
+        padding-top: 140px;
+    }
+
+    #player {
+        height: calc((100vw - 48px) * 9 / 16);
+        width: calc(100% - 48px);
+    }
+}
+
+@media (max-width: 480px) {
+    .toolbar { height: 64px; padding: 10px; gap: 6px; }
+    .toolbar button { padding: 8px 10px; font-size: 13px; }
 }
