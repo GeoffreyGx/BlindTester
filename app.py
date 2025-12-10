@@ -27,22 +27,32 @@ app.mount("/static", StaticFiles(directory=str(static_dir), html=True), name="st
 def server_index():
     return FileResponse(static_dir / "index.html")
 
+@app.get("/party/{game_code}/{host_id}")
+def serve_game(game_code: str, host_id: str):
+    return FileResponse(static_dir / "party.html")
+
 @app.get("/join")
 def serve_join():
     return FileResponse(static_dir / "join.html")
 
-@app.get("/game")
-def serve_game():
-    return FileResponse(static_dir / "game.html")
-
 @app.get("/join/{game_code}")
 def serve_join_with_code(game_code: str):
+    game_code = game_code.lower()
+
+    if game_code not in games_list:
+        serve_join()
+    
+    return FileResponse(static_dir / "join.html")
+
+@app.get("/join/{game_code}/{player_id}")
+def serve_join_with_id(game_code: str, player_id: str):
     return FileResponse(static_dir / "join.html")
 
 games_list: Dict[str, Game] = {}
 connections_list: Dict[Tuple[str, str], WebSocket] = {}
 active_timers: Dict[str, asyncio.Task] = {}  # Track active answer timers per game
-
+last_leaderboard = {}
+last_msg = {"action": "no_message_sent_yet"}
 
 async def broadcast(game_code: str, message: dict):
     """Send a message to all web sockets in the same game."""
@@ -62,6 +72,7 @@ async def broadcast(game_code: str, message: dict):
 async def timer_task(game_code: str):
     """Wait 15 seconds and broadcast time limit exceeded."""
     await asyncio.sleep(15)
+    global last_msg
 
     game = games_list.get(game_code)
     if not game:
@@ -72,15 +83,13 @@ async def timer_task(game_code: str):
     artist = song.artist if song else None
     youtube_url = song.youtube_url if song else None
 
-    await broadcast(
-        game_code,
-        {
+    last_msg = {
             "action": "time_limit_exceeded",
             "title": title,
             "artist": artist,
             "youtube_url": youtube_url
         }
-    )
+    await broadcast(game_code, last_msg)
 
     if game_code in active_timers:
         del active_timers[game_code]
@@ -102,13 +111,13 @@ def create_game():
 
 
 @app.post("/join_game")
-def join_game(game_code: str, username: str):
+def join_game(game_code: str):
     game_code = game_code.lower()
 
     if game_code not in games_list:
         raise HTTPException(404, "Game not found")
 
-    player = Player(username)
+    player = Player()
     game = games_list[game_code]
     game.addPlayer(player)
 
@@ -116,7 +125,55 @@ def join_game(game_code: str, username: str):
         "status": "Player successfully added",
         "player_id": player.getID()
     }
+    
 
+@app.post("/ping/{game_code}")
+def ping_game(game_code: str):
+    game_code = game_code.lower()
+
+    if game_code not in games_list:
+        return {
+            "action": "party_not_found"
+        }
+    else:
+        return {
+            "action": "party_found"
+        }
+
+@app.post("/ping_player/{game_code}/{player_id}")
+def ping_player(game_code: str, player_id: str):
+    game_code = game_code.lower()
+    game = games_list[game_code]
+
+    if game:
+        if game.getPlayerFromID(player_id) == None:
+            return {
+                "action": "player_not_found"
+            }
+        else:
+            return {
+                "action": "player_found"
+            }
+        
+@app.post("/ping_username/{game_code}/{player_id}")
+def ping_username(game_code: str, player_id: str):
+    game_code = game_code.lower()
+    game = games_list[game_code]
+    player = game.getPlayerFromID(player_id)
+
+    if game:
+        if player == None:
+            return {
+                "action": "username_not_known"
+            }
+        elif player.getUsername() == None:
+            return {
+                "action": "username_not_known"
+            }
+        else:
+            return {
+                "action": "username_known"
+            }
 
 @app.websocket("/ws/{game_code}/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str):
@@ -133,7 +190,9 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
 
     # Notify others
     await broadcast(game_code, {"event": "user_joined", "user_id": user_id})
-
+    # Keep track of the last message sent
+    global last_msg
+    global last_leaderboard
     try:
         while True:
             data = await websocket.receive_json()
@@ -144,7 +203,9 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
             # ---------------------------------------------------------
             if msg_type == "next":
                 if game.isGameFinished():
-                    await websocket.send_json({"action": "no_songs_left"})
+                    last_msg = {"action": "no_songs_left"}
+                    await broadcast(game_code, last_msg)
+                    del games_list[game_code]
                     continue
 
                 if user_id != game.getHostID():
@@ -154,7 +215,8 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                 game.setCountdownStatus(True)
 
                 for i in range(3, 0, -1):
-                    await broadcast(game_code, {"action": "countdown", "status": i})
+                    last_msg = {"action": "countdown", "status": i}
+                    await broadcast(game_code, last_msg)
                     await asyncio.sleep(1)
 
                 # New song
@@ -164,7 +226,9 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                 if song:
                     payload = song.getDict()
                     payload["action"] = "next_song"
-                    await broadcast(game_code, payload)
+                    await websocket.send_json(payload)
+                    last_msg = {"action": "next_song_client"}
+                    await broadcast(game_code, last_msg)
                     
                     # Cancel any existing timer for this game
                     if game_code in active_timers:
@@ -195,15 +259,35 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                     del active_timers[game_code]
 
                 # Broadcast the reveal (reuse time_limit_exceeded payload fields)
-                await broadcast(
-                    game_code,
-                    {
+                last_msg = {
                         "action": "time_limit_exceeded",
                         "title": song.title,
                         "artist": song.artist,
                         "youtube_url": song.youtube_url,
-                    },
-                )
+                    }
+                await broadcast(game_code, last_msg)
+
+            # ---------------------------------------------------------
+            # Player joins and sets its username
+            # ---------------------------------------------------------
+            elif msg_type == "set_username":
+                player = game.getPlayerFromID(user_id)
+
+                if player:
+                    try:
+                        username = data.get("username")
+                        if username:
+                            player.setUsername(username)
+                            await websocket.send_json({"action": "username_ok"})
+                            await broadcast(game_code, {
+                                "action": "username_set",
+                                "username": username,
+                                "user_id": user_id
+                            })
+                        else:
+                            await websocket.send_json({"action": "username_failed"})
+                    except:
+                        await websocket.send_json({"action": "username_empty_or_errored"})
 
             # ---------------------------------------------------------
             # Player answers
@@ -247,16 +331,29 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                     # Sort by score descending
                     leaderboard_list.sort(key=lambda x: x["score"], reverse=True)
                     
-                    await broadcast(game_code, {
+                    last_msg = {
                         "leaderboard": leaderboard_list,
                         "correct_players": game.getCorrectPlayersThisRound()
-                    })
+                    }
+                    last_leaderboard = last_msg
+                    await websocket.send_json({"action": "awaiting_next"})
+                    await broadcast(game_code, last_msg)
                 else:
                     await websocket.send_json({"action": "wrong_answer"})
+                    
+            elif msg_type == "remove_player":
+                player_id = data.get("player_id")
+                player = game.getPlayerFromID(player_id)
+                if player:
+                    game.removePlayer(player)
+                    await broadcast(game_code, {"action": "player_removed", "player_id": player_id})
+                else:
+                    await websocket.send_json({"action": "player_not_found"})
 
-            # ---------------------------------------------------------
-            # Elapsed broadcasting (moved to periodic loop recommended)
-            # ---------------------------------------------------------
+            elif msg_type == "update":
+                await websocket.send_json(last_leaderboard)
+                await websocket.send_json(last_msg)
+
 
     except WebSocketDisconnect:
         # Cleanup and notify
