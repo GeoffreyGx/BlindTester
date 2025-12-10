@@ -152,3 +152,7 @@ class Game:
     def getCorrectPlayersThisRound(self) -> List[str]:
         """Get list of player IDs who answered correctly this round."""
         return self.correct_players_this_round
+    
+    def removePlayer(self, player: Player):
+        self.players.remove(player)
+        self.leaderboard.remove(player)

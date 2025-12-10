@@ -37,6 +37,7 @@
 
     #playerContainer { display: flex; align-items: center; justify-content: center; margin-top: 10px; gap: 10px; flex-wrap: wrap;}
     .playerCard { padding: 25px; background-color: #555555; border:none; border-radius:6px; font-size: large; }
+    .playerCard:hover { text-decoration: line-through; background-color: #533f3f;}
   </style>
 </head>
 <body>
@@ -225,6 +226,14 @@
         if (msg.action == "username_set") {
           addToPlayerList(msg.username, msg.user_id)
         }
+
+        if (msg.action == "player_removed") {
+          removeFromPlayerList(msg.player_id)
+        }
+
+        if (msg.action == "player_not_found") {
+          console.log('Error : Player not found')
+        }
       };
 
       ws.onclose = () => {
@@ -238,7 +247,7 @@
 
     function sendNext() {
       if (!ws || ws.readyState !== WebSocket.OPEN) {
-        log('WebSocket not connected');
+        console.log('WebSocket not connected');
         return;
       }
 
@@ -253,7 +262,7 @@
 
     function revealSong() {
       if (!ws || ws.readyState !== WebSocket.OPEN) {
-        log('WebSocket not connected');
+        console.log('WebSocket not connected');
         return;
       }
 
@@ -358,9 +367,43 @@
       usernameList.push([username, user_id])
       html = ""
       usernameList.forEach((value) => {
-        html += `<span class="playerCard">${value[0]}</span>`
+        html += `<span class="playerCard" onclick="removePlayer('${value[1]}')">${value[0]}</span>`
       })
       document.getElementById('playerContainer').innerHTML = html
+    }
+
+    function removeFromPlayerList(user_id) {
+      let indexToRemove = null
+      console.log(usernameList)
+      usernameList.forEach((element, index) => {
+        if (element[1] == user_id) {
+          indexToRemove = index
+        }
+      });
+      if (indexToRemove !== null) {
+        usernameList.splice(indexToRemove, 1)
+        let html = ""
+        usernameList.forEach((value) => {
+        html += `<span class="playerCard" onclick="removePlayer('${value[1]}')">${value[0]}</span>`
+        })
+        document.getElementById('playerContainer').innerHTML = html
+      } else {
+        console.log('Player not found')
+      }
+    }
+
+    function removePlayer(user_id) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.log('WebSocket not connected');
+        return;
+      }
+
+      try {
+        ws.send(JSON.stringify({ type: 'remove_player', player_id: user_id }));
+        console.log(`Player removal of ${user_id} requested`);
+      } catch (err) {
+        log('Player removal failed: ' + err);
+      }
     }
 
     setupCanvasGradient()

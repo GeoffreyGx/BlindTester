@@ -46,17 +46,6 @@ def serve_join_with_code(game_code: str):
 
 @app.get("/join/{game_code}/{player_id}")
 def serve_join_with_id(game_code: str, player_id: str):
-    # game_code = game_code.lower()
-
-    # if game_code not in games_list:
-    #     serve_join()
-    
-    # game = games_list[game_code]
-    # player = game.getPlayerFromID(player_id)
-
-    # if not player:
-    #     serve_join_with_code(game_code)
-    
     return FileResponse(static_dir / "join.html")
 
 games_list: Dict[str, Game] = {}
@@ -352,6 +341,15 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                 else:
                     await websocket.send_json({"action": "wrong_answer"})
                     
+            elif msg_type == "remove_player":
+                player_id = data.get("player_id")
+                player = game.getPlayerFromID(player_id)
+                if player:
+                    game.removePlayer(player)
+                    await broadcast(game_code, {"action": "player_removed", "player_id": player_id})
+                else:
+                    await websocket.send_json({"action": "player_not_found"})
+
             elif msg_type == "update":
                 await websocket.send_json(last_leaderboard)
                 await websocket.send_json(last_msg)
