@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
+from fastapi.templating import Jinja2Templates
 import asyncio
 import time
 from typing import Dict, Tuple
@@ -21,11 +22,19 @@ app.add_middleware(
 )
 
 static_dir = Path(__file__).parent / "static"
-app.mount("/static", StaticFiles(directory=str(static_dir), html=True), name="static")
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+templates = Jinja2Templates(directory="static")
 
 @app.get("/")
 def server_index():
     return FileResponse(static_dir / "index.html")
+
+@app.get("/editor")
+def serve_editor(request: Request):
+    return templates.TemplateResponse(
+        "editor.html", {"request": request}
+    )
 
 @app.get("/party/{game_code}/{host_id}")
 def serve_game(game_code: str, host_id: str):
