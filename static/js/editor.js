@@ -1,5 +1,4 @@
 let songList = []
-let songStartTimes = []
 let player
 
 function refreshSidebar() {
@@ -20,13 +19,13 @@ function refreshSidebar() {
 function refreshContent(index) {
     const content = document.getElementById("content")
     const song = songList[index]
-    const songStartTime = songStartTimes[index]
     artist = song.get("artist")
     title = song.get("title")
     youtube_url = song.get("youtube_url")
+    timestamp = song.get("timestamp")
 
     if (youtube_url) {
-        html = `<h3>${title} - ${artist}</h3><h5>${youtube_url} Starting at : ${songStartTime} seconds</h5><label>Artist : </label><input id="artist"></input><br /><label>Title : </label><input id="title"></input><br /><label>Youtube URL : </label><input id="youtube_url"></input><br /><button onclick="updateSong(${index})">Update</button><button onclick="setCurrentTimestamp(${index})">Set current timestamp</button><br /><div id="player"></div>`
+        html = `<h3>${title} - ${artist}</h3><h5>${youtube_url} Starting at : ${timestamp} seconds</h5><label>Artist : </label><input id="artist"></input><br /><label>Title : </label><input id="title"></input><br /><label>Youtube URL : </label><input id="youtube_url"></input><br /><button onclick="updateSong(${index})">Update</button><button onclick="setCurrentTimestamp(${index})">Set current timestamp</button><br /><div id="player"></div>`
     } else {
         html = `<h3>${title} - ${artist}</h3><h5>${youtube_url}</h5><label>Artist : </label><input id="artist"></input><br /><label>Title : </label><input id="title"></input><br /><label>Youtube URL : </label><input id="youtube_url"></input><br /><button onclick="updateSong(${index})">Update</button>`
     }
@@ -34,7 +33,7 @@ function refreshContent(index) {
     content.innerHTML = html
 
     if (youtube_url) {
-        loadYouTubePlayer(youtube_url, songStartTime)
+        loadYouTubePlayer(youtube_url, timestamp)
     }
 }
 
@@ -42,10 +41,10 @@ function newSong() {
     const emptyTemplate = new Map([
         ["artist", ""],
         ["title", ""],
-        ["youtube_url", ""]
+        ["youtube_url", ""],
+        ["timestamp", 0]
     ]);
     songList.push(emptyTemplate)
-    songStartTimes.push(0)
     refreshSidebar()
     refreshContent(songList.length - 1)
 }
@@ -91,21 +90,15 @@ function loadYouTubePlayer(video_id, video_timestamp) {
 }
 
 function setCurrentTimestamp(index) {
-    startTime = player.getCurrentTime()
-    songStartTimes[index] = Math.floor(startTime)
+    startTime = Math.floor(player.getCurrentTime())
+    const song = songList[index]
+    song.set("timestamp", startTime)
     refreshContent(index)
 }
 
 function exportToJSON() {
     let songs_json = { "songs": [] }
     songList.forEach((song, index) => {
-        // This is a temporary fix before implementing Youtube iFrame API in the game itself
-        // TODO: Remove this and fix the game to support the new format
-        url = song.get("youtube_url")
-        timestamp = songStartTimes[index]
-        youtube_url = `https://www.youtube.com/embed/${url}?start=${timestamp}`
-        song.set("youtube_url", youtube_url) 
-
         const obj = Object.fromEntries(song)
         songs_json["songs"].push(obj)
     })

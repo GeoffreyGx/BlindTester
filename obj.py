@@ -35,17 +35,19 @@ class Player(User):
 
 
 class Song:
-    def __init__(self, title: str, artist: str, youtube_url: str) -> None:
+    def __init__(self, title: str, artist: str, youtube_url: str, timestamp: int) -> None:
         self.title = title
         self.artist = artist
         self.youtube_url = youtube_url
+        self.timestamp = timestamp
         self.scores: List[Player] = []
 
     def getDict(self) -> dict:
         return {
             "title": self.title,
             "artist": self.artist,
-            "youtube_url": self.youtube_url
+            "youtube_url": self.youtube_url,
+            "timestamp": self.timestamp
         }
 
     def addToScoreboard(self, player: Player) -> None:
@@ -74,7 +76,7 @@ class Game:
     def _loadSongs(self, songs_path) -> List[Song]:
         with open(songs_path, "r") as f:
             data = json.load(f)
-        return [Song(s["title"], s["artist"], s["youtube_url"]) for s in data["songs"]]
+        return [Song(s["title"], s["artist"], s["youtube_url"], s["timestamp"]) for s in data["songs"]]
 
     def addPlayer(self, player: Player) -> None:
         self.players.append(player)

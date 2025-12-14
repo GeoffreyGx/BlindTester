@@ -11,8 +11,8 @@
     .hidden { display: none; }
     #gameCodeBox { font-size: 1rem; margin-bottom: 10px; padding: 10px; background:#222; border-radius:6px; display: flex; gap: calc(320px - 10px - 10px - 90px - 106.78px - 6px);}
     #gameCode { font-size: 2rem; }
-    #player { position: relative; padding-bottom: 56.25%; /* 16:9 */ height: 0;}
-    #player iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+    #videoPlayerContainer { position: relative; padding-bottom: 56.25%; /* 16:9 */ height: 0;}
+    #videoPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
     button { padding:10px 18px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
     button:disabled { background:#555; cursor:not-allowed; }
     h1 { margin-top: 0px; margin-bottom: 0px;}
@@ -58,8 +58,8 @@
           <h3>Current song : <span id="song"></span></h3>
           <div id="song"></div>
 
-          <div id="player" class="hidden">
-            <iframe id="yt" allow="autoplay"></iframe>
+          <div id="videoPlayerContainer" class="hidden">
+            <div id="player"></div>
           </div>
           <!--
           <h3>Log</h3>
@@ -77,6 +77,7 @@
       </div>
     </div>
   </div>
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     let ws = null;
@@ -150,7 +151,7 @@
         if (msg.action === 'next_song') {
           document.getElementById("fullscreen").classList.add('hidden');
           document.getElementById('song').innerHTML = `?`;
-          document.getElementById('player').classList.add('hidden');
+          document.getElementById('videoPlayerContainer').classList.add('hidden');
 
           document.querySelectorAll('#leaderboard li').forEach(li => li.classList.remove('correct'));
 
@@ -159,9 +160,12 @@
           if (nextBtn) nextBtn.disabled = true;
           if (revealBtn) revealBtn.disabled = false;
 
-          const yt = document.getElementById('yt');
+          const videoPlayerContainer = document.getElementById("videoPlayerContainer");
+          if (videoPlayerContainer) videoPlayerContainer.innerHTML = '<div id="player"></div>';
+
+          const player = document.getElementById('player');
           if (msg.youtube_url) {
-            yt.src = msg.youtube_url + '&autoplay=1';
+            loadYouTubePlayer(msg.youtube_url, msg.timestamp)
           } else {
             log('ERROR: No YouTube URL received.');
           }
@@ -176,7 +180,7 @@
 
         if (msg.action === 'time_limit_exceeded') {
           if (msg.youtube_url) {
-            document.getElementById('player').classList.remove('hidden');
+            document.getElementById('videoPlayerContainer').classList.remove('hidden');
             document.getElementById('song').innerHTML = `${msg.title} - ${msg.artist}`;
           } else {
             log('ERROR: No YouTube URL received.');
@@ -361,6 +365,20 @@
         html += `<span class="playerCard">${value[0]}</span>`
       })
       document.getElementById('playerContainer').innerHTML = html
+    }
+
+    function loadYouTubePlayer(video_id, video_timestamp) {
+      player = new YT.Player('player', {
+          videoId: video_id,
+          playerVars: {
+              start: video_timestamp
+          },
+          events: {
+              'onReady': (event) => {
+                  event.target.playVideo();
+              }
+          }
+      });
     }
 
     setupCanvasGradient()
