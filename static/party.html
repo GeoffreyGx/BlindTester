@@ -53,7 +53,7 @@
         <h5>Made with <span style="color: red;"><3</span> by GeoffreyGx</h5>
       </div>
       <div class="topbar_sliders">
-        <input type="range" id="timeSlider" min="5" max="55"><br />
+        <input type="range" id="timeSlider" min="5" max="55"><span id="timeSliderCounter">30s</span><br />
         <input type="range" id="volumeSlider" min="0" max="100">
       </div>
     </div>
@@ -174,7 +174,6 @@
 
           const timeSlider = document.getElementById('timeSlider')
           timeSlider.disabled = true;
-
           const yt = document.getElementById('yt');
           if (msg.youtube_url) {
             yt.src = msg.youtube_url + '&autoplay=1';
@@ -206,6 +205,11 @@
           const revealBtn = document.getElementById('revealBtn');
           if (nextBtn) nextBtn.disabled = false;
           if (revealBtn) revealBtn.disabled = true;
+        }
+
+        if(msg.action == 'time_changed') {
+            let timeSliderCounter = document.getElementById('timeSliderCounter')
+            timeSliderCounter.innerHTML = `${timeSlider.value}s`
         }
 
         if (msg.leaderboard) {
