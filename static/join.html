@@ -355,6 +355,7 @@
           if (msg.youtube_url && msg.username) {
             document.getElementById("answer_button").disabled = true;
             document.getElementById("answer_box").classList.add('hidden');
+            document.getElementById("answer").value = '';
             document.getElementById("waiting_box").classList.add('hidden');
             document.getElementById("leaderboard_box").classList.remove('hidden');
           } else {
