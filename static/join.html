@@ -53,6 +53,10 @@
     <h3>Leaderboard</h3>
     <ul id="leaderboard" class="leaderboard-list"></ul>    
   </div>
+
+  <div id="kicked" class="hidden">
+    <h3>You've been kicked from the party</h3>
+  </div>
   <!--
   <h3>Log</h3>
   <div id="log"></div>
@@ -61,6 +65,7 @@
     let ws = null;
     let userId = null;
     let gameCode = null;
+    let username = null;
 
     const host = window.location.host
     const origin = window.location.origin;
@@ -138,6 +143,25 @@
         console.log('Error during URL prefill: ' + err);
       }
     });
+
+    input_gameCode = document.getElementById("gameCode")
+    input_userName = document.getElementById("userName")
+    input_answer = document.getElementById("answer")
+
+    function onEnter(input, callback) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const codeField = input
+          codeField.value = codeField.value.trim().toLowerCase();
+          callback();
+        }
+      });
+    }
+
+    onEnter(input_gameCode, joinGameWithButton);
+    onEnter(input_userName, setUsername);
+    onEnter(input_answer, sendAnswer);
 
     function log(msg) {
       const logBox = document.getElementById('log');
@@ -298,6 +322,13 @@
           document.getElementById('answer_box').classList.remove('hidden');
         }
 
+        if (msg.action === 'username_set') {
+          if (msg.user_id === userId) {
+            username = msg.username
+            console.log(username)
+          }
+        }
+
         if (msg.action === 'username_failed') {
           document.getElementById('username_message_box').style.color = '#ff3d3d'        
           document.getElementById('username_message_box').innerHTML = "Can't set username..."
@@ -309,9 +340,11 @@
         }
 
         if (msg.action === 'next_song_client') {
-          document.getElementById("leaderboard_box").classList.add('hidden');
-          document.getElementById("answer_button").disabled = false;
-          document.getElementById("answer_box").classList.remove('hidden');
+          if (username) {
+            document.getElementById("leaderboard_box").classList.add('hidden');
+            document.getElementById("answer_button").disabled = false;
+            document.getElementById("answer_box").classList.remove('hidden');  
+          }
         }
 
         if (msg.action === 'countdown') {
@@ -319,7 +352,7 @@
         }
 
         if (msg.action === "time_limit_exceeded") {
-          if (msg.youtube_url) {
+          if (msg.youtube_url && msg.username) {
             document.getElementById("answer_button").disabled = true;
             document.getElementById("answer_box").classList.add('hidden');
             document.getElementById("answer").value = '';
@@ -337,11 +370,22 @@
         }
 
         if (msg.action == "awaiting_next") {
-          document.getElementById("answer_box").classList.add('hidden');
-          document.getElementById("waiting_box").classList.remove('hidden');
+          if (username) {
+            document.getElementById("answer_box").classList.add('hidden');
+            document.getElementById("waiting_box").classList.remove('hidden');
+          }
         }
 
-        if (msg.leaderboard) {
+        if (msg.action == "player_removed") {
+          if (msg.player_id == userId) {
+            document.getElementById("answer_box").classList.add('hidden');
+            document.getElementById("waiting_box").classList.add('hidden');
+            document.getElementById("leaderboard_box").classList.add('hidden');
+            document.getElementById("kicked").classList.remove('hidden');
+          }
+        }
+
+        if (msg.leaderboard && username) {
           // Format leaderboard into a ranked list and render as HTML, highlighting correct players in green
           const entries = Array.isArray(msg.leaderboard) ? msg.leaderboard : Object.entries(msg.leaderboard || {});
           const correctPlayers = msg.correct_players || [];

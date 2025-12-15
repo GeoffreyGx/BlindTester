@@ -27,6 +27,10 @@
     .sidebar { width: 320px; }
     #waiting_room { flex: 1 }
 
+    .topbar { display: flex; justify-content: space-between; width: 100%; }
+    .topbar_title { flex: 1; min-width: 300px; }
+    .topbar_sliders { width: 320px; }
+
     /* Leaderboard box */
     .leaderbox { background: #0f1720; border: 1px solid #2b3640; padding: 12px; border-radius: 8px; }
     .leaderbox h3 { margin-top: 0; }
@@ -43,8 +47,16 @@
 <body>
   <canvas id='fullscreen'></canvas>
   <div class="body">
-    <h1>BlindTester</h1>
-    <h5>Made with <span style="color: red;"><3</span> by GeoffreyGx</h5>
+    <div class="topbar">
+      <div class="topbar_title">
+        <h1>BlindTester</h1>
+        <h5>Made with <span style="color: red;"><3</span> by GeoffreyGx</h5>
+      </div>
+      <div class="topbar_sliders">
+        <input type="range" id="timeSlider" min="5" max="55"><span id="timeSliderCounter">30s</span><br />
+        <input type="range" id="volumeSlider" min="0" max="100">
+      </div>
+    </div>
     <p id="errorHandler"></p>
     <div id="game">
       <div class="container">
@@ -161,6 +173,8 @@
           if (nextBtn) nextBtn.disabled = true;
           if (revealBtn) revealBtn.disabled = false;
 
+          const timeSlider = document.getElementById('timeSlider')
+          timeSlider.disabled = true;
           const videoPlayerContainer = document.getElementById("videoPlayerContainer");
           if (videoPlayerContainer) videoPlayerContainer.innerHTML = '<div id="player"></div>';
 
@@ -183,6 +197,9 @@
           if (msg.youtube_url) {
             document.getElementById('videoPlayerContainer').classList.remove('hidden');
             document.getElementById('song').innerHTML = `${msg.title} - ${msg.artist}`;
+
+            const timeSlider = document.getElementById('timeSlider')
+            timeSlider.disabled = false;
           } else {
             log('ERROR: No YouTube URL received.');
           }
@@ -192,6 +209,11 @@
           const revealBtn = document.getElementById('revealBtn');
           if (nextBtn) nextBtn.disabled = false;
           if (revealBtn) revealBtn.disabled = true;
+        }
+
+        if(msg.action == 'time_changed') {
+            let timeSliderCounter = document.getElementById('timeSliderCounter')
+            timeSliderCounter.innerHTML = `${timeSlider.value}s`
         }
 
         if (msg.leaderboard) {
@@ -421,6 +443,21 @@
         console.log(`Player removal of ${user_id} requested`);
       } catch (err) {
         log('Player removal failed: ' + err);
+      }
+    }
+
+    let timeSlider = document.getElementById('timeSlider')
+    timeSlider.oninput = () => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.log('WebSocket not connected');
+        return;
+      }
+
+      try {
+        ws.send(JSON.stringify({ type: 'set_atl', time: timeSlider.value }));
+        console.log(`Changing ATL to ${timeSlider.value} requested`);
+      } catch (err) {
+        log('ATL changed failed: ' + err);
       }
     }
 
