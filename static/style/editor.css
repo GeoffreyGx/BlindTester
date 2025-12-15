@@ -104,6 +104,7 @@ input[type="text"], input[type="url"], input {
     width: 100%;
     padding: 8px 10px;
     margin-top: 6px;
+    margin-bottom: 6px;
     border-radius: 8px;
     border: 1px solid rgba(255,255,255,0.12);
     background: rgba(0,0,0,0.12);
@@ -114,6 +115,7 @@ input[type="text"], input[type="url"], input {
 .content button {
     margin-top: 12px;
     margin-right: 8px;
+    margin-bottom: 12px;
     background: #7b5cff;
     border: none;
     color: #fff;
@@ -168,4 +170,30 @@ input[type="text"], input[type="url"], input {
 @media (max-width: 480px) {
     .toolbar { height: 64px; padding: 10px; gap: 6px; }
     .toolbar button { padding: 8px 10px; font-size: 13px; }
+}
+
+.nameVariationsBox .element {
+    display: flex;
+    justify-content: space-between;
+    background: linear-gradient(180deg,rgba(255, 255, 255, 0.3) 0%, rgba(153, 153, 153, 0.3) 100%);
+    border-radius: 10px;
+    padding: 0px 12px 0px 12px;
+    align-items: center;
+    margin-top: 0px;
+    margin-bottom: 12px;
+    gap: 12px;
+}
+
+.nameVariationsBox p {
+    flex: 10;
+}
+
+.nameVariationsBox button .remove {
+    flex: 1;
+    background-color: #ad0c0ca5;
+}
+
+.nameVariationsBox button .add {
+    flex: 1;
+    background-color: #7b5cff;
 }

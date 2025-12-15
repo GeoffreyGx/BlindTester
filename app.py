@@ -4,12 +4,19 @@ import asyncio
 import time
 from typing import Dict, Tuple
 
-from obj import Game, Player, User
+from obj import Game, Player, User, AIResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
+
+from google import genai
+from pydantic import BaseModel, TypeAdapter
+from dotenv import load_dotenv
+
+load_dotenv()
+client = genai.Client().aio
 
 app = FastAPI()
 
@@ -369,3 +376,13 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
         if (game_code, user_id) in connections_list:
             del connections_list[(game_code, user_id)]
         await broadcast(game_code, {"event": "user_left", "user_id": user_id})
+
+@app.post("/get_variations")
+async def get_variation(title: str, artist: str):
+    response = await client.models.generate_content(
+        model="gemini-2.5-flash-lite", 
+        contents=f"Generate a list of orthographical variations for the artist ${artist} and the song ${title} for a French speaker. Include exact matches, common typos, phonetic misspellings, missing punctuation, and different separators (like hyphens or 'by'). CRITICAL: Convert every single output string to strictly lowercase. Don't include the artist name in the title variations and don't include the title in the artist name variations. Don't add any text that wasn't already present",
+        config={"response_mime_type": "application/json", "response_schema": AIResponse}
+    )
+    
+    return response.model_dump()['parsed']

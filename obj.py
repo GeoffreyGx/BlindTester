@@ -3,7 +3,11 @@ import time
 import json
 import math
 from typing import List, Optional
+from pydantic import BaseModel
 
+class AIResponse(BaseModel):
+    title_writings: list[str]
+    artist_writings: list[str]
 
 class User:
     def __init__(self) -> None:
@@ -35,12 +39,17 @@ class Player(User):
 
 
 class Song:
-    def __init__(self, title: str, artist: str, youtube_url: str, timestamp: int) -> None:
+    def __init__(self, title: str, artist: str, youtube_url: str, timestamp: int, title_variations: list[str], artist_variations: list[str]) -> None:
         self.title = title
         self.artist = artist
         self.youtube_url = youtube_url
         self.timestamp = timestamp
+
+        self.title_variations = title_variations
+        self.artist_variations = artist_variations
+
         self.scores: List[Player] = []
+
 
     def getDict(self) -> dict:
         return {
@@ -73,10 +82,11 @@ class Game:
         self.time_start = 0.0
         self.countdown = False
 
+
     def _loadSongs(self, songs_path) -> List[Song]:
         with open(songs_path, "r") as f:
             data = json.load(f)
-        return [Song(s["title"], s["artist"], s["youtube_url"], s["timestamp"]) for s in data["songs"]]
+        return [Song(s["title"], s["artist"], s["youtube_url"], s["timestamp"], s["title_writings"], s["artist_writings"]) for s in data["songs"]]
 
     def addPlayer(self, player: Player) -> None:
         self.players.append(player)
@@ -125,9 +135,11 @@ class Game:
         current_song = self.getCurrentSong()
         if current_song == None:
             return 0
-        if current_song.artist.lower() in answer:
+        if any(s in answer for s in current_song.artist_variations):
             score = score + 1
-        if current_song.title.lower() in answer:
+            print("Artist right")
+        if any(s in answer for s in current_song.title_variations):
+            print("Title right")
             score = score + 1
         return score
 
