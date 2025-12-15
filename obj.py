@@ -56,7 +56,7 @@ class Song:
 
 
 class Game:
-    ANSWER_TIME_LIMIT = 15  # seconds
+    ANSWER_TIME_LIMIT = 30  # seconds
 
     def __init__(self, host: User, songs_path="./songs.json") -> None:
         self.host = host
@@ -156,3 +156,9 @@ class Game:
     def removePlayer(self, player: Player):
         self.players.remove(player)
         self.leaderboard.remove(player)
+
+    def getATL(self):
+        return self.ANSWER_TIME_LIMIT
+    
+    def setATL(self, time: int):
+        self.ANSWER_TIME_LIMIT = time
