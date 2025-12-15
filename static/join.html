@@ -432,6 +432,7 @@
     function sendAnswer() {
       const ans = document.getElementById('answer').value;
       ws.send(JSON.stringify({ type: 'answer', answer: ans }));
+      document.getElementById('answer').value = '';
     }
   </script>
 </body>
