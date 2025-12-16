@@ -29,9 +29,9 @@ class Player(User):
     def getUsername(self) -> str | None:
         return self.username if self.username != "Connecting..." else None
 
-    def alterScore(self, elapsed: float, score: int) -> None:
+    def alterScore(self, elapsed: float, score: int, timing: int) -> None:
         """Update score with exponential decay."""
-        bonus = ((1 - math.e ** (elapsed / 7)) / 0.5) + 50
+        bonus = (1 - math.e**(elapsed / (0.3*timing))) + 50
         self.score += bonus * score
 
     def __str__(self) -> str:

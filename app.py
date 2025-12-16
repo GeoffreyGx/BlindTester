@@ -349,7 +349,7 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                 if score > 0:
                     song.addToScoreboard(player)
                     elapsed = time.time() - game.getCurrentRoundTime()
-                    player.alterScore(elapsed, score)
+                    player.alterScore(elapsed, score, game.getATL())
                     game.addCorrectPlayerThisRound(user_id)
 
                     # Send leaderboard with player IDs for correct highlighting
