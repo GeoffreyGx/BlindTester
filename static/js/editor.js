@@ -1,3 +1,5 @@
+let origin = window.location.origin;
+
 let songList = []
 let player
 
@@ -57,9 +59,9 @@ function refreshContent(index) {
     timestamp = song.get("timestamp")
 
     if (youtube_url) {
-        html = `<h3>${title} - ${artist}</h3><h5>${youtube_url} Starting at : ${timestamp} seconds</h5><label>Artist : </label><input id="artist"></input><br /><label>Title : </label><input id="title"></input><br /><label>Youtube URL : </label><input id="youtube_url"></input><br /><button onclick="updateSong(${index})">Update</button><button onclick="setCurrentTimestamp(${index})">Set current timestamp</button><br /><div id="player"></div>`
+        html = `<h3>${title} - ${artist}</h3><h5>${youtube_url} Starting at : ${timestamp} seconds</h5><label>Artist : </label><input id="artist"></input><br /><label>Title : </label><input id="title"></input><br /><label>Youtube URL : </label><input id="youtube_url"></input><br /><button onclick="updateSong(${index})">Update</button><button onclick="setCurrentTimestamp(${index})">Set current timestamp</button><br /><div id="player"></div><br /><h3>Orthographic variations</h3><button onclick="generateVariations(${index})">Automatic AI-powered generation</button><br /><div id="name_variations" class="nameVariationsBox"></div>`
     } else {
-        html = `<h3>${title} - ${artist}</h3><h5>${youtube_url}</h5><label>Artist : </label><input id="artist"></input><br /><label>Title : </label><input id="title"></input><br /><label>Youtube URL : </label><input id="youtube_url"></input><br /><button onclick="updateSong(${index})">Update</button>`
+        html = `<h3>${title} - ${artist}</h3><h5>${youtube_url}</h5><label>Artist : </label><input id="artist"></input><br /><label>Title : </label><input id="title"></input><br /><label>Youtube URL : </label><input id="youtube_url"></input><br /><button onclick="updateSong(${index})">Update</button><br /><h3>Orthographic variations</h3><button onclick="generateVariations(${index})">Automatic AI-powered generation</button><br /><div id="name_variations" class="nameVariationsBox"></div>`
     }
 
     content.innerHTML = html
@@ -67,6 +69,30 @@ function refreshContent(index) {
     if (youtube_url) {
         loadYouTubePlayer(youtube_url, timestamp)
     }
+
+    refreshNameVariations(index)
+}
+
+function refreshNameVariations(index) {
+    const song = songList[index]
+
+    artist_writings = song.get("artist_writings")
+    title_writings = song.get("title_writings")
+
+    html = "<h4>Artist variations : </h4>"
+    artist_writings.forEach((element) => {
+        html = html + `<div class="element"><p>${element}</p><button onclick="removeVariation(${index}, 'artist_writings', '${element}')">-</button></div>`
+    })
+
+    html = html + `<div class="element"><input id='variationArtistInput' placeholder='Add your own variations...'></input><button onclick="addVariation(${index}, 'artist_writings')" class='add'>+</button></div>`
+    
+    html = html + "<h4>Title variations : </h4>"
+    title_writings.forEach((element) => {
+        html = html + `<div class="element"><p>${element}</p><button onclick="removeVariation(${index}, 'title_writings', '${element}')" class="remove">-</button></div>`
+    })
+    html = html + `<div class="element"><input id='variationTitleInput' placeholder='Add your own variations...'></input><button onclick="addVariation(${index}, 'title_writings')" class='add'>+</button></div>`
+    
+    document.getElementById("name_variations").innerHTML = html
 }
 
 function newSong() {
@@ -74,7 +100,9 @@ function newSong() {
         ["artist", ""],
         ["title", ""],
         ["youtube_url", ""],
-        ["timestamp", 0]
+        ["timestamp", 0],
+        ["artist_writings", []],
+        ["title_writings", []]
     ]);
     songList.push(emptyTemplate)
     refreshSidebar()
@@ -143,6 +171,44 @@ function loadJSON(json_string) {
         songList.push(song)
     })
     return songList
+}
+async function generateVariations(index) {
+    const song = songList[index];
+
+    console.log(`${song.get("title")} - ${song.get("artist")}`)
+    const params = new URLSearchParams({
+        artist: song.get("artist"),
+        title: song.get("title"),
+    });
+
+    const res = await fetch(`${origin}/get_variations?${params}`, { method: 'POST' });
+    const data = await res.json();
+
+    song.set("title_writings", data["title_writings"]);
+    song.set("artist_writings", data["artist_writings"]);
+
+    refreshNameVariations(index)
+}
+
+function addVariation(index, type) {
+    const song = songList[index]
+    const name = (document.getElementById('variationTitleInput').value ? document.getElementById('variationTitleInput').value : document.getElementById('variationArtistInput').value)
+    if (name) {
+        let varList = song.get(type)
+        varList.push(name)
+        song.set(type, varList)
+        refreshNameVariations(index)
+    }
+}
+
+function removeVariation(index, type, name) {
+    const song = songList[index]
+    let varList = song.get(type)
+
+    varList = varList.filter(v => v !== name)
+    song.set(type, varList)
+
+    refreshNameVariations(index)
 }
 
 function convertToJSON() {
