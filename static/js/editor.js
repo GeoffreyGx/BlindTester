@@ -166,7 +166,9 @@ function loadJSON(json_string) {
             ["artist", dict["artist"]],
             ["title", dict["title"]],
             ["youtube_url", dict["youtube_url"]],
-            ["timestamp", dict["timestamp"]]
+            ["timestamp", dict["timestamp"]],
+            ["artist_writings", dict["artist_writings"]],
+            ["title_writings", dict["title_writings"]]
         ]);
         songList.push(song)
     })
@@ -188,6 +190,7 @@ async function generateVariations(index) {
     song.set("artist_writings", data["artist_writings"]);
 
     refreshNameVariations(index)
+    localStorage.setItem("savedSongList", convertToJSON(songList)) 
 }
 
 function addVariation(index, type) {
@@ -199,6 +202,7 @@ function addVariation(index, type) {
         song.set(type, varList)
         refreshNameVariations(index)
     }
+    localStorage.setItem("savedSongList", convertToJSON(songList)) 
 }
 
 function removeVariation(index, type, name) {
@@ -209,6 +213,7 @@ function removeVariation(index, type, name) {
     song.set(type, varList)
 
     refreshNameVariations(index)
+    localStorage.setItem("savedSongList", convertToJSON(songList)) 
 }
 
 function convertToJSON() {
