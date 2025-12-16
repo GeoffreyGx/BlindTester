@@ -67,6 +67,7 @@ def serve_join_with_id(game_code: str, player_id: str):
 games_list: Dict[str, Game] = {}
 connections_list: Dict[Tuple[str, str], WebSocket] = {}
 active_timers: Dict[str, asyncio.Task] = {}  # Track active answer timers per game
+inactive_timers: Dict[str, asyncio.Task] = {}
 last_msg: Dict[str, Dict] = {}
 last_leaderboard: Dict = {}
 
@@ -109,6 +110,14 @@ async def timer_task(game_code: str):
     if game_code in active_timers:
         del active_timers[game_code]
 
+
+async def inactive_timer_task(game_code: str):
+    game = games_list.get(game_code)
+    if not game:
+        return
+    
+    await asyncio.sleep(1800)
+    del games_list[game_code]
 
 
 @app.post("/create_game")
@@ -214,6 +223,8 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
     try:
         while True:
             data = await websocket.receive_json()
+            if game_code in inactive_timers.keys():
+                inactive_timers[game_code].cancel()
             msg_type = data.get("type")
 
             # ---------------------------------------------------------
@@ -382,6 +393,9 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
             elif msg_type == "update":
                 await websocket.send_json(last_leaderboard[game_code])
                 await websocket.send_json(last_msg[game_code])
+            
+            task = asyncio.create_task(inactive_timer_task(game_code))
+            inactive_timers[game_code] = task
 
 
     except WebSocketDisconnect:
