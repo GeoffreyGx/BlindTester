@@ -10,6 +10,13 @@
     <div class="toolbar">
         <button onclick="newSong()">Add a new song</button>
         <button onclick="exportToJSON()">Export to JSON</button>
+        <button id="jsonLoadingButton">Load JSON File</button>
+        <input
+            type="file"
+            id="jsonFileInput"
+            accept=".json,application/json"
+            hidden
+        />
     </div>
     <div class="sidebar" id="sidebar">
 
