@@ -3,6 +3,38 @@ let origin = window.location.origin;
 let songList = []
 let player
 
+window.addEventListener("DOMContentLoaded", async () => {
+    document.getElementById("content").innerHTML = `Loading saved song list...`
+    let savedSongList = await localStorage.getItem("savedSongList")
+    if (savedSongList) {
+        songList = loadJSON(savedSongList);
+        refreshSidebar()
+        refreshContent(0)
+    } else {
+        document.getElementById("content").innerHTML = `No saved song list found. Click on "Add a new song" to begin`
+    }
+});
+
+document.getElementById("jsonLoadingButton").addEventListener("click", () => {
+    document.getElementById('jsonFileInput').click()
+})
+
+document.getElementById('jsonFileInput').addEventListener('change', () => {
+    const file = document.getElementById('jsonFileInput').files[0];
+    if (!file) return;  
+    const reader = new FileReader();    
+    reader.onload = () => {
+      try {
+        songList = loadJSON(reader.result)
+        refreshSidebar()
+        refreshContent(0)
+      } catch (err) {
+        alert('Invalid JSON file');
+      }
+    };  
+    reader.readAsText(file);    
+})
+
 function refreshSidebar() {
     const sidebar = document.getElementById("sidebar")
     let html = ""
@@ -99,6 +131,7 @@ function updateSong(index) {
     console.log(youtube_url_formatted)
     refreshSidebar()
     refreshContent(index)
+    localStorage.setItem("savedSongList", convertToJSON(songList)) 
 }
 
 function loadYouTubePlayer(video_id, video_timestamp) {
@@ -122,8 +155,23 @@ function setCurrentTimestamp(index) {
     const song = songList[index]
     song.set("timestamp", startTime)
     refreshContent(index)
+    localStorage.setItem("savedSongList", convertToJSON(songList)) 
 }
 
+function loadJSON(json_string) {
+    json = JSON.parse(json_string)
+    let songList = []
+    json["songs"].forEach((dict, index) => {
+        const song = new Map([
+            ["artist", dict["artist"]],
+            ["title", dict["title"]],
+            ["youtube_url", dict["youtube_url"]],
+            ["timestamp", dict["timestamp"]]
+        ]);
+        songList.push(song)
+    })
+    return songList
+}
 async function generateVariations(index) {
     const song = songList[index];
 
@@ -163,17 +211,19 @@ function removeVariation(index, type, name) {
     refreshNameVariations(index)
 }
 
-function exportToJSON() {
+function convertToJSON() {
     let songs_json = { "songs": [] }
     songList.forEach((song, index) => {
         const obj = Object.fromEntries(song)
         songs_json["songs"].push(obj)
     })
-    json = JSON.stringify(songs_json)
-    
+    return JSON.stringify(songs_json)
+}
+
+function exportToJSON() {
+    json = convertToJSON()
     var file = new Blob([json], {
         type: 'application/json'
     })
-
     saveAs(file, "songs.json")
 }
