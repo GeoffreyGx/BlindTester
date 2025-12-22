@@ -1,4 +1,5 @@
 import time
+import json
 from redis_client import redis_client
 from redis_models import RedisGame
 
@@ -6,6 +7,9 @@ GAME_TTL = 3600
 
 def game_key(code: str) -> str:
     return f"game:{code}"
+
+def logs_key(code: str) -> str:
+    return f"game:{code}:logs"
 
 def check_game_existence(code: str) -> bool:
     return redis_client.exists(game_key(code)) == 1
@@ -51,3 +55,15 @@ def can_receive_answer(code: str) -> bool:
             return False        
     elapsed = time.time() - game.time_start
     return elapsed <= game.atl
+
+def get_latest_log(code: str):
+    entries = redis_client.xrevrange(logs_key(code), count=1)
+    if not entries:
+        return {'action': 'no_message_sent_yet'}
+    
+    _id, data = entries[0] # type: ignore 
+    return json.loads(data["payload"])
+    
+
+def set_latest_log(code: str, msg: dict):
+    redis_client.xadd(logs_key(code), {'payload': json.dumps(msg)})

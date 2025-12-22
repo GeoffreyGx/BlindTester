@@ -9,7 +9,7 @@ async def connect(game_code: str, user_id: str, ws: WebSocket):
 async def disconnect(game_code: str, user_id: str):
     connections.pop((game_code, user_id), None)
 
-async def broadcast(game_code: str, message: dict):
+async def broadcast(game_code: str, message):
     for (g, _), ws in connections.items():
         if g == game_code:
             try:
