@@ -66,6 +66,12 @@
     let userId = null;
     let gameCode = null;
     let username = null;
+    let gameState = {
+      phase: null,
+      leaderboard: null,
+      correctPlayers: [],
+      username: null
+    };
 
     const host = window.location.host
     const origin = window.location.origin;
