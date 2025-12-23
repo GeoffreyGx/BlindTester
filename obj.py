@@ -4,6 +4,7 @@ import json
 import math
 from typing import List, Optional
 from pydantic import BaseModel
+from redis_models import RedisPlayer
 
 class AIResponse(BaseModel):
     title_writings: list[str]
@@ -48,7 +49,7 @@ class Song:
         self.title_variations = title_variations
         self.artist_variations = artist_variations
 
-        self.scores: List[Player] = []
+        self.scores: List[RedisPlayer] = []
 
 
     def getDict(self) -> dict:
@@ -59,10 +60,10 @@ class Song:
             "timestamp": self.timestamp
         }
 
-    def addToScoreboard(self, player: Player) -> None:
+    def addToScoreboard(self, player: RedisPlayer) -> None:
         self.scores.append(player)
 
-    def getScoreboard(self) -> List[Player]:
+    def getScoreboard(self) -> List[RedisPlayer]:
         return self.scores
 
 
@@ -137,9 +138,7 @@ class Game:
             return 0
         if any(s in answer for s in current_song.artist_variations):
             score = score + 1
-            print("Artist right")
         if any(s in answer for s in current_song.title_variations):
-            print("Title right")
             score = score + 1
         return score
 
