@@ -1,20 +1,20 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pathlib import Path
 
 from ws_service import connect, disconnect, broadcast
 from game_service import next_song, get_game, create_game, check_game_existence, close_game, can_receive_answer, get_latest_log, set_latest_log
-from player_service import add_player, get_player, set_username, alter_score, remove_player, save_player, get_leaderboard
+from player_service import add_player, get_player, set_username, alter_score, remove_player, save_player, get_leaderboard, player_exists, set_phase
 from song_service import load_songs
 
 from obj import AIResponse, Song
 from dotenv import load_dotenv
 from google import genai
 
-from typing import Dict, Tuple
+from typing import Dict
 import asyncio
 import time
 import secrets
@@ -42,6 +42,63 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 @app.get("/")
 def serve_index():
     return FileResponse(static_dir / "index.html")
+
+@app.get("/beta/join")
+def serve_beta_join(request: Request):
+    return templates.TemplateResponse(
+        "beta_join.html", {
+            'request': request,
+            'prefill_code': ''
+        }
+    )
+
+@app.get("/beta/join/{game_code}")
+def serve_beta_join_code(request: Request, game_code: str):
+    game_code = game_code.lower()
+
+    if not check_game_existence(game_code):
+        return RedirectResponse("/beta/join?error=game", status_code=303)
+    
+    return templates.TemplateResponse(
+        "beta_join.html", {
+            'request': request,
+            'prefill_code': game_code
+        }
+    )
+
+@app.post("/beta/join")
+def serve_post_beta_join(game_code: str = Form(...), username: str = Form(...)):
+    game_code = game_code.lower().strip()
+    username = username.strip()
+
+    if not check_game_existence(game_code):
+        return RedirectResponse("/beta/join?error=game", status_code=303)
+    
+    if not username:
+        return RedirectResponse(f"/beta/join/{game_code}?error=username", status_code=303)
+    
+    player_id = secrets.token_hex(8)
+    add_player(game_code, player_id, 'player')
+
+    return RedirectResponse(f"/beta/play/{game_code}?uid={player_id}", status_code=303)
+
+@app.get("/beta/play/{game_code}")
+def serve_play(request: Request, game_code: str, uid: str):
+    if not player_exists(game_code, uid):
+        return RedirectResponse("/join", status_code=303)
+    
+    ws_proto = "wss" if request.url.scheme == "https" else "ws"
+    ws_url = f"{ws_proto}://{request.url.netloc}/ws/{game_code}/{uid}"
+
+    return templates.TemplateResponse(
+        "beta_play.html", {
+            'request': request,
+            'game_code': game_code,
+            'user_id': uid,
+            'ws_url': ws_url
+        }
+    )
+
 
 @app.get("/join")
 def serve_join():
@@ -165,6 +222,10 @@ def ping_username(game_code: str, player_id: str):
 async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str):
     """Main WebSocket entrypoint for a game."""
     player = get_player(game_code, user_id)
+    if not player:
+        await websocket.close()
+        return
+    
     await connect(game_code, user_id, websocket)
 
     game = get_game(game_code)
@@ -178,6 +239,20 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
         while True:
             data = await websocket.receive_json()
             msg_type = data.get("type")
+
+            if msg_type == "hello":
+                snapshot = {
+                    "type": "snapshot",
+                    "player": {
+                        "id": player.id,
+                        "username": player.username
+                    },
+                    "phase": player.phase,
+                    "can_answer": can_receive_answer(game_code),
+                    "leaderboard": get_leaderboard(game_code)
+                }
+                
+                await websocket.send(snapshot)
 
             # ---------------------------------------------------------
             # Host requests next song
@@ -268,13 +343,11 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
             # Player joins and sets its username
             # ---------------------------------------------------------
             elif msg_type == "set_username":
-                player = get_player(game_code, user_id)
-
                 if player:
                     try:
                         username = data.get("username")
                         if username:
-                            set_username(player, username)
+                            set_username(game_code, player, username)
                             save_player(game_code, player)
                             await websocket.send_json({"action": "username_ok"})
                             await broadcast(game_code, {
@@ -297,10 +370,6 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                         await websocket.send_json({"action": "answering_not_available"})
                     else:
                         await websocket.send_json({"action": "answering_not_available"})
-                    continue
-
-                player = get_player(game_code, user_id)
-                if not player:
                     continue
 
                 game = get_game(game_code)

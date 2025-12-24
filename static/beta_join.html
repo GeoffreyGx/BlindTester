@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style/beta_join.css') }}">
+    <title>Join Game!</title>
+</head>
+<body>
+    <form method="post" action="/beta/join">
+        <div id="game_code_box">
+            <input
+                id="game_code_input"
+                name="game_code" 
+                placeholder="Game Code"
+                value="{{ prefill_code }}"
+                {% if prefill_code %}readonly{% endif %}
+                required
+            >
+            <button type="button" onclick="checkGameCode()">Join</button>
+        </div>
+        <div id="username_box" class="hidden">
+            <input
+                id="username_input"
+                name="username"
+                placeholder="Username"
+                required
+            >
+            <button type="submit">Join</button>
+        </div>
+    </form>
+    <div id="error_box">
+    {% if request.query_params.get("error") == "game" %}
+        <p class="error">Game not found</p>
+    {% endif %}
+
+    {% if request.query_params.get("error") == "username" %}
+        <p class="error">Username is required</p>
+    {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', path='/js/beta_join.js') }}"></script>
+    {% if prefill_code %}
+        <script>
+            document.getElementById("game_code_box").classList.add("hidden")
+            document.getElementById("username_box").classList.remove("hidden");
+        </script>
+    {% endif %}
+
+</body>
+</html>

@@ -6,6 +6,7 @@ class RedisPlayer(BaseModel):
     username: str | None
     score: float
     role: Literal["host", "player"]
+    phase: Literal["WAITING", "ANSWERING", "LEADERBOARD", "LOCKED", "KICKED"]
 
 class RedisGame(BaseModel):
     host_id: str

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style/beta_play.css') }}">
+    <title>Document</title>
+</head>
+<body>
+    <div id="waiting">
+        <h1>Waiting Phase</h1>
+    </div>
+    <div id="answering" class="hidden">
+        <h1>Answering Phase</h1>
+    </div>
+    <div id="locked" class="hidden">
+        <h1>Locked Phase</h1>
+    </div>
+    <div id="leaderboard" class="hidden">
+        <h1>leaderboard Phase</h1>
+    </div>
+    <div id="kicked" class="hidden">
+        <h1>Kicked Phase</h1>
+    </div>
+    <div id="error" class="hidden">
+        <h1>Error while connecting to the server...</h1>
+    </div>
+    <button onclick="render()">Show Answering</button>
+    <button onclick="render()">Show Kicked</button>
+
+    <script>
+        const WS_URL = "{{ ws_url }}";
+        const GAME_CODE = "{{ game_code }}";
+        const PLAYER_ID = "{{ player_id }}";
+    </script>
+    <script src="{{ url_for('static', path='/js/beta_play.js') }}"></script>
+</body>
+</html>
