@@ -14,8 +14,7 @@ def add_player(code: str, player_id: str, role: Literal["host", "player"]):
         id=player_id, 
         username=None, 
         score=0, 
-        role=role,
-        phase="WAITING"
+        role=role
     )
     redis_client.hset(players_key(code), player_id, player.model_dump_json())
     if role == "player":
@@ -39,10 +38,6 @@ def remove_player(code: str, player_id: str):
 
 def set_username(game_code: str, player: RedisPlayer, username: str):
     player.username = username
-    save_player(game_code, player)
-
-def set_phase(game_code: str, player: RedisPlayer, phase: Literal["ANSWERING", "LEADERBOARD", "LOCKED", "KICKED"]):
-    player.phase = phase
     save_player(game_code, player)
 
 def alter_score(player: RedisPlayer, score: int, elapsed: float, atl: int):

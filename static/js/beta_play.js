@@ -88,6 +88,6 @@ ws.onmessage = (message) => {
         }
     }
 
-    console.log(state);
+    console.log(msg);
     render(state);
 }

@@ -6,7 +6,6 @@ class RedisPlayer(BaseModel):
     username: str | None
     score: float
     role: Literal["host", "player"]
-    phase: Literal["WAITING", "ANSWERING", "LEADERBOARD", "LOCKED", "KICKED"]
 
 class RedisGame(BaseModel):
     host_id: str
@@ -15,3 +14,4 @@ class RedisGame(BaseModel):
     countdown: bool
     atl: int
     correct_players: List[str]
+    phase: Literal["WAITING", "ANSWERING", "LEADERBOARD", "LOCKED"]

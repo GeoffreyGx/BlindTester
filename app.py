@@ -6,8 +6,8 @@ from fastapi.responses import FileResponse, RedirectResponse
 from pathlib import Path
 
 from ws_service import connect, disconnect, broadcast
-from game_service import next_song, get_game, create_game, check_game_existence, close_game, can_receive_answer, get_latest_log, set_latest_log
-from player_service import add_player, get_player, set_username, alter_score, remove_player, save_player, get_leaderboard, player_exists, set_phase
+from game_service import next_song, get_game, create_game, check_game_existence, close_game, can_receive_answer, get_latest_log, set_latest_log, set_phase
+from player_service import add_player, get_player, set_username, alter_score, remove_player, save_player, get_leaderboard, player_exists
 from song_service import load_songs
 
 from obj import AIResponse, Song
@@ -247,7 +247,7 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                         "id": player.id,
                         "username": player.username
                     },
-                    "phase": player.phase,
+                    "phase": game.phase,
                     "can_answer": can_receive_answer(game_code),
                     "leaderboard": get_leaderboard(game_code)
                 }
@@ -297,6 +297,13 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                     # Start a new answer timer for this round
                     task = asyncio.create_task(timer_task(game_code))
                     active_timers[game_code] = task
+                    set_phase(game_code, 'ANSWERING')
+                    snapshot = {
+                        "phase": game.phase,
+                        "can_answer": can_receive_answer(game_code)
+                    }
+
+                    await broadcast(game_code, snapshot)
 
             # ---------------------------------------------------------
             # Host reveal song immediately
@@ -327,6 +334,12 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                     })
                 latest_log = get_latest_log(game_code)
                 await broadcast(game_code, latest_log)
+                set_phase(game_code, 'LEADERBOARD')
+                snapshot = {
+                    "phase": game.phase,
+                    "can_answer": can_receive_answer(game_code)
+                }
+                await broadcast(game_code, snapshot)
 
             elif msg_type == "set_atl":
                 if user_id != game.host_id:

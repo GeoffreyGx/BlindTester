@@ -35,7 +35,8 @@ def create_game(code: str, host_id: str):
         time_start=0,
         countdown=False,
         atl=30,
-        correct_players=[]
+        correct_players=[],
+        phase="WAITING"
     )
     save_game(code, game)
 
@@ -63,8 +64,12 @@ def get_latest_log(code: str):
         return {'action': 'no_message_sent_yet'}
     
     _id, data = entries[0] # type: ignore 
-    return json.loads(data["payload"])
-    
+    return json.loads(data["payload"])    
 
 def set_latest_log(code: str, msg: dict):
     redis_client.xadd(logs_key(code), {'payload': json.dumps(msg)})
+
+def set_phase(game_code: str, phase: Literal["ANSWERING", "LEADERBOARD", "LOCKED"]):
+    game = get_game(game_code)
+    game.phase = phase
+    save_game(game_code, game)
