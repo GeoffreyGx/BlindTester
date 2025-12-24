@@ -16,58 +16,78 @@ let state = {
 }
 
 function render(state) {
-    hideAll()
+    hideAll();
 
     switch (state.phase) {
+        case 'WAITING':
+            showWaitingBox();
+            break;
         case 'ANSWERING':
-            showAnsweringBox(state.canAnswer)
+            showAnsweringBox(state.can_answer);
+            break;
         case 'LEADERBOARD':
-            showLeaderboard(state.leaderboard)
+            showLeaderboard(state.leaderboard);
+            break;
         case 'LOCKED':
-            showLocked()
+            showLocked();
+            break;
         case 'KICKED':
-            showKicked()
+            showKicked();
+            break;
         default:
-            showError()
-    }
+            showError();
+            break;
+    };
 }
 
 function hideAll() {
     for (const [_, value] of Object.entries(phase)) {
-        value.classList.add("hidden")
-    }
+        value.classList.add("hidden");
+    };
+}
+
+function showWaitingBox() {
+    phase.waitingBox.classList.remove("hidden");
 }
 
 function showAnsweringBox(canAnswer) {
-    phase.answeringBox.classList.remove("hidden")
+    phase.answeringBox.classList.remove("hidden");
 }
 
 function showLeaderboard(leaderboard) {
-    phase.leaderboardBox.classList.remove("hidden")
+    phase.leaderboardBox.classList.remove("hidden");
 }
 
 function showLocked() {
-    phase.lockedBox.classList.remove("hidden")
+    phase.lockedBox.classList.remove("hidden");
 }
 
 function showKicked() {
-    phase.kickedBox.classList.remove("hidden")
+    phase.kickedBox.classList.remove("hidden");
 }
 
 function showError() {
-    phase.errorBox.classList.remove("hidden")
+    phase.errorBox.classList.remove("hidden");
 }
 
 ws.onopen = () => {
-    ws.send({ type: "hello" })
+    try {
+        ws.send(JSON.stringify({type: "hello"}));
+    } catch (e) {
+        console.log(`Error while connecting to server... : ${e}`);
+    }
 }
 
-ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
+ws.onmessage = (message) => {
+    const msg = JSON.parse(message.data);
 
     if (msg.type === "snapshot") {
-        msg = state
+        state = {
+            ...state,
+            ...msg
+        }
     }
 
-    render(state)
+    console.log(state);
+    render(state);
 }

@@ -252,7 +252,7 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str, user_id: str)
                     "leaderboard": get_leaderboard(game_code)
                 }
                 
-                await websocket.send(snapshot)
+                await websocket.send_json(snapshot)
 
             # ---------------------------------------------------------
             # Host requests next song
